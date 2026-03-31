@@ -19,7 +19,7 @@ export default function FieldReadPage({
   params: { sessionId: string };
 }) {
   const router = useRouter();
-  const { session, setBusiness, setPreCallIntel, setPhase } = useSessionStore();
+  const { setBusiness, setPreCallIntel, setPhase } = useSessionStore();
 
   const [form, setForm] = useState<BusinessProfile>({
     name: "",
