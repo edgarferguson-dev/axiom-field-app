@@ -1,41 +1,67 @@
-// Core phase flow: pre-call → live-demo → debrief
-export type SessionPhase = "pre-call" | "live-demo" | "debrief";
+// Core phase flow — extended with V2B phases
+export type SessionPhase =
+  | "pre-call"
+  | "intake"
+  | "field-read"
+  | "live-demo"
+  | "closing"
+  | "debrief"
+  | "disposition"
+  | "recap";
 
 export type RiskBand = "high" | "medium" | "low";
 
+// SignalColor is the canonical type; Signal is the V2B alias
 export type SignalColor = "green" | "yellow" | "red";
+export type Signal = SignalColor;
+
+export type ObjectionType =
+  | "price"
+  | "busy"
+  | "already-have"
+  | "not-interested"
+  | "timing";
 
 // --- Input shapes ---
 
 export type BusinessProfile = {
   name: string;
   type: string;
-  currentSystem: string; // e.g., "manual follow-up", "no CRM", "basic email"
-  leadSource: string;    // e.g., "walk-ins", "Google", "referrals"
-  notes: string;         // rep's freeform observations at the door
+  currentSystem: string;
+  leadSource: string;
+  notes: string;
 };
 
 // --- AI output shapes ---
 
 export type PreCallIntel = {
-  painPattern: string;           // Specific pain point narrative (2-3 sentences)
-  riskBand: RiskBand;            // Urgency classification
-  missedValueEstimate: string;   // e.g., "$3,000–8,000/month"
-  keyOpportunities: string[];    // 3 talking points
-  recommendedAngle: string;      // Opening line for this rep to use
+  painPattern: string;
+  riskBand: RiskBand;
+  missedValueEstimate: string;
+  keyOpportunities: string[];
+  recommendedAngle: string;
 };
 
 export type CoachingPrompt = {
   id: string;
-  signal: SignalColor;   // Engagement level indicator
-  audioCue: string;      // What to say right now
-  nextMove: string;      // Tactical next action
-  buySignal?: string;    // Positive signal detected, if any
+  phase?: SessionPhase;
+  signal: SignalColor;
+  audioCue: string;
+  nextMove: string;
+  buySignal?: string;
   timestamp: number;
 };
 
+export interface SalesStep {
+  objection: ObjectionType;
+  rebuttal: string;
+  benefit: string;
+  question: string;
+  close: string;
+}
+
 export type PerformanceScore = {
-  overall: number; // 0–100
+  overall: number;
   breakdown: {
     discovery: number;
     positioning: number;
@@ -61,4 +87,27 @@ export type Session = {
   startedAt: number | null;
   completedAt: number | null;
   score: PerformanceScore | null;
+  // V2B: static demo signal tracking
+  signals: Signal[];
+  objections: ObjectionType[];
+  salesSteps: SalesStep[];
 };
+
+// --- Utility helpers ---
+
+export function getLastSignal(session: Session): Signal | undefined {
+  return session.signals.at(-1);
+}
+
+export function getSignalTrend(session: Session, count = 3): Signal[] {
+  return session.signals.slice(-count);
+}
+
+export function getSessionDurationMs(session: Session): number {
+  return (session.completedAt ?? Date.now()) - (session.startedAt ?? Date.now());
+}
+
+export function getObjectionCoverage(session: Session): number {
+  if (session.objections.length === 0) return 1;
+  return Math.min(session.salesSteps.length / session.objections.length, 1);
+}
