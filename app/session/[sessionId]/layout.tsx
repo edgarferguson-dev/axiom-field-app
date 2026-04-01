@@ -15,27 +15,36 @@ export default function SessionLayout({
 }) {
   const hydrated = useSessionStoreHydrated();
   const session = useSessionStore((s) => s.session);
-  const presentation = session?.presentation ?? createEmptyPresentation();
-
-  const subtitle = session?.repName
-    ? `${session.repName} · ${session.business?.name ?? "New Session"}`
-    : "Sales Execution Platform";
 
   if (!hydrated) {
     return (
-      <AppShell>
-        <Topbar title="Axiom Field" subtitle="Sales Execution Platform" />
-        <div className="mx-auto max-w-7xl px-4 py-12 text-center text-sm text-muted">
-          Loading session…
-        </div>
-      </AppShell>
+      <div className="min-h-screen bg-background p-6 text-sm text-muted">
+        Loading session…
+      </div>
     );
   }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background p-6 text-sm text-muted">
+        <p>No active session in storage.</p>
+        <a href="/" className="mt-2 inline-block text-accent underline">
+          Return home to start a session
+        </a>
+      </div>
+    );
+  }
+
+  const presentation = session.presentation ?? createEmptyPresentation();
+
+  const subtitle = session.repName
+    ? `${session.repName} · ${session.business?.name ?? "New Session"}`
+    : "Sales Execution Platform";
 
   return (
     <AppShell>
       <Topbar title="Axiom Field" subtitle={subtitle} />
-      <SessionFlowProgress presentation={presentation} phase={session?.phase} />
+      <SessionFlowProgress presentation={presentation} phase={session.phase} />
       {children}
       <LiveCoachingOverlay />
     </AppShell>

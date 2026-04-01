@@ -18,22 +18,24 @@ const STEPS = [
 
 export function getSessionFlowStep(
   pathname: string,
-  presentation: SessionPresentationState,
+  presentation: SessionPresentationState | null | undefined,
   phase?: SessionPhase | null
 ): number {
+  const p = presentation;
   if (phase && END_PHASES.includes(phase)) return 5;
   if (pathname.includes("/recap") || pathname.includes("/disposition")) return 5;
   if (pathname.includes("/field-read")) return 1;
   if (pathname.includes("/demo")) {
-    if (presentation.openAccountStarted) return 5;
-    if (presentation.pricingAccepted || presentation.pricingResponse === "accept") return 4;
+    if (!p) return 2;
+    if (p.openAccountStarted) return 5;
+    if (p.pricingAccepted || p.pricingResponse === "accept") return 4;
     if (
-      presentation.pricingTierId ||
-      presentation.pricingResponse === "hesitate" ||
-      presentation.pricingResponse === "reject"
+      p.pricingTierId ||
+      p.pricingResponse === "hesitate" ||
+      p.pricingResponse === "reject"
     )
       return 4;
-    if (presentation.interactiveProof?.step === "confirmed") return 3;
+    if (p.interactiveProof?.step === "confirmed") return 3;
     return 2;
   }
   return 1;

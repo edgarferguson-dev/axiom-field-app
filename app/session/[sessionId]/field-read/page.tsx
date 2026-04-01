@@ -130,7 +130,9 @@ export default function FieldReadPage({
 }) {
   const router = useRouter();
   const session = useSessionStore((s) => s.session);
-  const { setBusiness, setPreCallIntel, setPhase } = useSessionStore();
+  const setBusiness = useSessionStore((s) => s.setBusiness);
+  const setPreCallIntel = useSessionStore((s) => s.setPreCallIntel);
+  const setPhase = useSessionStore((s) => s.setPhase);
 
   const [form, setForm] = useState<BusinessProfile>({
     name: "",
