@@ -1,11 +1,13 @@
 import type { SessionPresentationState } from "@/types/presentation";
 
-// Core phase flow — extended with V2B phases
+// Core phase flow
 export type SessionPhase =
   | "pre-call"
   | "intake"
   | "field-read"
+  | "constraints"
   | "live-demo"
+  | "offer-fit"
   | "closing"
   | "debrief"
   | "disposition"
@@ -24,7 +26,55 @@ export type ObjectionType =
   | "not-interested"
   | "timing";
 
-// --- Input shapes ---
+// ── Constraints ────────────────────────────────────────────────────────────
+
+export type ConstraintKey =
+  | "missed-calls"
+  | "no-booking"
+  | "weak-reviews"
+  | "slow-follow-up"
+  | "weak-online-presence"
+  | "no-automation"
+  | "poor-retention"
+  | "no-reactivation"
+  | "inconsistent-pipeline"
+  | "no-nurture"
+  | "owner-too-busy"
+  | "no-clear-offer"
+  | "low-trust"
+  | "poor-lead-handling";
+
+export type ConstraintSeverity = "high" | "medium" | "low";
+
+export type BusinessConstraint = {
+  key: ConstraintKey;
+  severity: ConstraintSeverity;
+  notes?: string;
+};
+
+// ── Close outcome ──────────────────────────────────────────────────────────
+
+export type CloseOutcomeType =
+  | "start-now"
+  | "send-proposal"
+  | "book-setup-call"
+  | "need-decision-maker"
+  | "follow-up-later"
+  | "not-interested"
+  | "not-a-fit";
+
+export type CloseOutcome = {
+  type: CloseOutcomeType;
+  packageSelected?: string;
+  followUpReason?: string;
+  followUpTiming?: string;
+  lossReason?: string;
+  decisionMakerName?: string;
+  proposalRecipient?: string;
+  notes?: string;
+};
+
+// ── Input shapes ───────────────────────────────────────────────────────────
 
 export type BusinessProfile = {
   name: string;
@@ -34,7 +84,7 @@ export type BusinessProfile = {
   notes: string;
 };
 
-// --- AI output shapes ---
+// ── AI output shapes ───────────────────────────────────────────────────────
 
 export type PreCallIntel = {
   painPattern: string;
@@ -75,7 +125,7 @@ export type PerformanceScore = {
   summary: string;
 };
 
-// --- Session aggregate ---
+// ── Session aggregate ──────────────────────────────────────────────────────
 
 export type Session = {
   id: string;
@@ -84,27 +134,28 @@ export type Session = {
   phase: SessionPhase;
   business: BusinessProfile | null;
   preCallIntel: PreCallIntel | null;
+  constraints: BusinessConstraint[];
+  closeOutcome: CloseOutcome | null;
   coachingPrompts: CoachingPrompt[];
   repNotes: string;
   startedAt: number | null;
   completedAt: number | null;
   score: PerformanceScore | null;
-  /** Buyer presentation / proof / pricing milestones — source of truth in Zustand */
+  /** Buyer presentation / proof / pricing milestones */
   presentation: SessionPresentationState;
-  // V2B: static demo signal tracking
   signals: Signal[];
   objections: ObjectionType[];
   salesSteps: SalesStep[];
 };
 
-// --- Utility helpers ---
+// ── Utility helpers ────────────────────────────────────────────────────────
 
 export function getLastSignal(session: Session): Signal | undefined {
-  return session.signals.at(-1);
+  return (session.signals ?? []).at(-1);
 }
 
 export function getSignalTrend(session: Session, count = 3): Signal[] {
-  return session.signals.slice(-count);
+  return (session.signals ?? []).slice(-count);
 }
 
 export function getSessionDurationMs(session: Session): number {
@@ -112,6 +163,8 @@ export function getSessionDurationMs(session: Session): number {
 }
 
 export function getObjectionCoverage(session: Session): number {
-  if (session.objections.length === 0) return 1;
-  return Math.min(session.salesSteps.length / session.objections.length, 1);
+  const objections = session.objections ?? [];
+  const salesSteps = session.salesSteps ?? [];
+  if (objections.length === 0) return 1;
+  return Math.min(salesSteps.length / objections.length, 1);
 }

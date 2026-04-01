@@ -43,7 +43,6 @@ export default function DemoPage({
   const setRepNotes = useSessionStore((s) => s.setRepNotes);
   const setPhase = useSessionStore((s) => s.setPhase);
   const markStarted = useSessionStore((s) => s.markStarted);
-  const markCompleted = useSessionStore((s) => s.markCompleted);
   const applyPresentationMaterial = useSessionStore((s) => s.applyPresentationMaterial);
   const addSignal = useSessionStore((s) => s.addSignal);
   const addObjection = useSessionStore((s) => s.addObjection);
@@ -52,7 +51,7 @@ export default function DemoPage({
   useEffect(() => {
     if (!session) return;
     setPhase("live-demo");
-  }, [session, setPhase]);
+  }, [session?.id, setPhase]);
 
   const [loadingCoach, setLoadingCoach] = useState(false);
   const [activePrompt, setActivePrompt] = useState<CoachingPrompt | null>(null);
@@ -102,9 +101,8 @@ export default function DemoPage({
   }
 
   function handleEndSession() {
-    markCompleted();
-    setPhase("disposition");
-    router.push(`/session/${params.sessionId}/disposition`);
+    setPhase("offer-fit");
+    router.push(`/session/${params.sessionId}/offer-fit`);
   }
 
   const sig = activePrompt ? SIGNAL_CONFIG[activePrompt.signal] : null;
@@ -341,7 +339,7 @@ export default function DemoPage({
         onClick={handleEndSession}
         className="w-full rounded-lg border border-border/60 px-3 py-2 text-xs font-medium text-muted transition hover:border-signal-red/35 hover:text-signal-red"
       >
-        End Session → Debrief
+        End Demo → Review Offer
       </button>
     </div>
   );

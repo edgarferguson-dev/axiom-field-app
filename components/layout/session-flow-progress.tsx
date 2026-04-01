@@ -6,38 +6,26 @@ import { cn } from "@/lib/utils/cn";
 import type { SessionPresentationState } from "@/types/presentation";
 import type { SessionPhase } from "@/types/session";
 
-const END_PHASES: SessionPhase[] = ["recap", "disposition", "debrief", "closing"];
-
 const STEPS = [
-  { id: 1, label: "Intelligence", sub: "Pre-call" },
-  { id: 2, label: "Presentation", sub: "Story" },
-  { id: 3, label: "Proof", sub: "Interactive" },
-  { id: 4, label: "Pricing", sub: "Decision" },
-  { id: 5, label: "Account", sub: "Close" },
+  { id: 1, label: "Scout",     sub: "Pre-call" },
+  { id: 2, label: "Diagnose",  sub: "Constraints" },
+  { id: 3, label: "Prove",     sub: "Live demo" },
+  { id: 4, label: "Close",     sub: "Offer + close" },
+  { id: 5, label: "Record",    sub: "Recap" },
 ] as const;
 
 export function getSessionFlowStep(
   pathname: string,
-  presentation: SessionPresentationState | null | undefined,
+  _presentation: SessionPresentationState | null | undefined,
   phase?: SessionPhase | null
 ): number {
-  const p = presentation;
-  if (phase && END_PHASES.includes(phase)) return 5;
-  if (pathname.includes("/recap") || pathname.includes("/disposition")) return 5;
-  if (pathname.includes("/field-read")) return 1;
-  if (pathname.includes("/demo")) {
-    if (!p) return 2;
-    if (p.openAccountStarted) return 5;
-    if (p.pricingAccepted || p.pricingResponse === "accept") return 4;
-    if (
-      p.pricingTierId ||
-      p.pricingResponse === "hesitate" ||
-      p.pricingResponse === "reject"
-    )
-      return 4;
-    if (p.interactiveProof?.step === "confirmed") return 3;
-    return 2;
-  }
+  if (pathname.includes("/recap") || phase === "recap") return 5;
+  if (pathname.includes("/disposition") || phase === "disposition") return 5;
+  if (pathname.includes("/close") || phase === "closing") return 4;
+  if (pathname.includes("/offer-fit") || phase === "offer-fit") return 4;
+  if (pathname.includes("/demo") || phase === "live-demo") return 3;
+  if (pathname.includes("/constraints") || phase === "constraints") return 2;
+  if (pathname.includes("/field-read") || phase === "field-read") return 1;
   return 1;
 }
 
@@ -67,40 +55,24 @@ export function SessionFlowProgress({ presentation, phase }: SessionFlowProgress
                   <div
                     className={cn(
                       "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold transition-all duration-300 sm:h-8 sm:w-8 sm:text-xs",
-                      isActive &&
-                        "border-accent bg-accent text-white shadow-glow",
-                      isComplete &&
-                        "border-signal-green bg-signal-green/10 text-signal-green",
-                      !isActive &&
-                        !isComplete &&
-                        "border-border bg-card text-muted"
+                      isActive && "border-accent bg-accent text-white shadow-glow",
+                      isComplete && "border-signal-green bg-signal-green/10 text-signal-green",
+                      !isActive && !isComplete && "border-border bg-card text-muted"
                     )}
                   >
                     {isComplete ? (
-                      <svg
-                        className="h-3 w-3 sm:h-4 sm:w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
+                      <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     ) : (
                       step.id
                     )}
                   </div>
                   <div className="hidden min-w-0 sm:block">
-                    <div
-                      className={cn(
-                        "text-xs font-medium leading-tight sm:text-sm",
-                        isActive ? "text-foreground" : isComplete ? "text-signal-green" : "text-muted"
-                      )}
-                    >
+                    <div className={cn(
+                      "text-xs font-medium leading-tight sm:text-sm",
+                      isActive ? "text-foreground" : isComplete ? "text-signal-green" : "text-muted"
+                    )}>
                       {step.label}
                     </div>
                     <div className="text-[10px] text-muted sm:text-xs">{step.sub}</div>

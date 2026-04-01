@@ -4,9 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "npx --yes rimraf@5 .next && next dev",
+    "clean:next": "npx --yes rimraf@5 .next",
     "build": "next build",
+    "build:clean": "npx --yes rimraf@5 .next && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "npx --yes rimraf@5 .next node_modules package-lock.json",
+    "reinstall": "npm install && npm run build",
+    "fresh": "npm run clean && npm install && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

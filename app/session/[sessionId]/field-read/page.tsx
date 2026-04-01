@@ -149,7 +149,7 @@ export default function FieldReadPage({
   useEffect(() => {
     if (!session) return;
     setPhase("field-read");
-  }, [session, setPhase]);
+  }, [session?.id, setPhase]);
 
   // Auto-trigger AI scan when name + type are both filled
   useEffect(() => {
@@ -194,14 +194,14 @@ export default function FieldReadPage({
 
   function handleBeginDemo() {
     setBusiness(form);
-    setPhase("live-demo");
-    router.push(`/session/${params.sessionId}/demo`);
+    setPhase("constraints");
+    router.push(`/session/${params.sessionId}/constraints`);
   }
 
   function handleSkip() {
     setBusiness(form);
-    setPhase("live-demo");
-    router.push(`/session/${params.sessionId}/demo`);
+    setPhase("constraints");
+    router.push(`/session/${params.sessionId}/constraints`);
   }
 
   const risk = intel ? RISK_CONFIG[intel.riskBand] : null;
@@ -424,7 +424,7 @@ export default function FieldReadPage({
               onClick={handleBeginDemo}
               className="w-full rounded-xl bg-accent px-5 py-4 text-sm font-semibold text-white shadow-glow transition hover:opacity-90"
             >
-              Begin Live Demo →
+              Identify Constraints →
             </button>
           </div>
         )}

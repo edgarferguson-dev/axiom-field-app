@@ -10,6 +10,8 @@ import type {
   ObjectionType,
   SalesStep,
   Signal,
+  BusinessConstraint,
+  CloseOutcome,
 } from "@/types/session";
 import { createEmptyPresentation } from "@/types/presentation";
 import type { MaterialSummary } from "@/lib/flows/materialEngine";
@@ -32,6 +34,8 @@ type SessionStore = {
   setPhase: (phase: SessionPhase) => void;
   setBusiness: (business: BusinessProfile) => void;
   setPreCallIntel: (intel: PreCallIntel) => void;
+  setConstraints: (constraints: BusinessConstraint[]) => void;
+  setCloseOutcome: (outcome: CloseOutcome) => void;
   addCoachingPrompt: (prompt: CoachingPrompt) => void;
   setRepNotes: (notes: string) => void;
   setScore: (score: PerformanceScore) => void;
@@ -56,6 +60,32 @@ type SessionStore = {
   dispatchInteractiveProofEvent: (event: InteractiveDemoEvent) => void;
 };
 
+function makeEmptySession(
+  id: string,
+  repName: string,
+  phase: SessionPhase
+): Session {
+  return {
+    id,
+    repName,
+    createdAt: Date.now(),
+    phase,
+    business: null,
+    preCallIntel: null,
+    constraints: [],
+    closeOutcome: null,
+    coachingPrompts: [],
+    repNotes: "",
+    startedAt: null,
+    completedAt: null,
+    score: null,
+    presentation: createEmptyPresentation(),
+    signals: [],
+    objections: [],
+    salesSteps: [],
+  };
+}
+
 export const useSessionStore = create<SessionStore>()(
   persist(
     (set) => ({
@@ -63,52 +93,14 @@ export const useSessionStore = create<SessionStore>()(
       disposition: null,
 
       initSession: (id, repName) =>
-        set({
-          session: {
-            id,
-            repName,
-            createdAt: Date.now(),
-            phase: "pre-call",
-            business: null,
-            preCallIntel: null,
-            coachingPrompts: [],
-            repNotes: "",
-            startedAt: null,
-            completedAt: null,
-            score: null,
-            presentation: createEmptyPresentation(),
-            signals: [],
-            objections: [],
-            salesSteps: [],
-          },
-          disposition: null,
-        }),
+        set({ session: makeEmptySession(id, repName, "pre-call"), disposition: null }),
 
       startSession: (repName) => {
         const id =
           typeof crypto !== "undefined" && "randomUUID" in crypto
             ? crypto.randomUUID()
             : `ax-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-        set({
-          session: {
-            id,
-            repName,
-            createdAt: Date.now(),
-            phase: "field-read",
-            business: null,
-            preCallIntel: null,
-            coachingPrompts: [],
-            repNotes: "",
-            startedAt: null,
-            completedAt: null,
-            score: null,
-            presentation: createEmptyPresentation(),
-            signals: [],
-            objections: [],
-            salesSteps: [],
-          },
-          disposition: null,
-        });
+        set({ session: makeEmptySession(id, repName, "field-read"), disposition: null });
         return id;
       },
 
@@ -120,6 +112,12 @@ export const useSessionStore = create<SessionStore>()(
 
       setPreCallIntel: (preCallIntel) =>
         set((s) => (s.session ? { session: { ...s.session, preCallIntel } } : s)),
+
+      setConstraints: (constraints) =>
+        set((s) => (s.session ? { session: { ...s.session, constraints } } : s)),
+
+      setCloseOutcome: (closeOutcome) =>
+        set((s) => (s.session ? { session: { ...s.session, closeOutcome } } : s)),
 
       addCoachingPrompt: (prompt) =>
         set((s) =>
@@ -189,11 +187,7 @@ export const useSessionStore = create<SessionStore>()(
           return {
             session: {
               ...s.session,
-              presentation: {
-                ...prev,
-                strategyPackage: strategy,
-                generatedSlides,
-              },
+              presentation: { ...prev, strategyPackage: strategy, generatedSlides },
             },
           };
         }),
@@ -215,12 +209,7 @@ export const useSessionStore = create<SessionStore>()(
           return {
             session: {
               ...s.session,
-              presentation: {
-                ...empty,
-                materialSummary: summary,
-                strategyPackage: strategy,
-                generatedSlides,
-              },
+              presentation: { ...empty, materialSummary: summary, strategyPackage: strategy, generatedSlides },
             },
           };
         }),
@@ -230,10 +219,7 @@ export const useSessionStore = create<SessionStore>()(
           if (!s.session) return s;
           const pres = s.session.presentation;
           return {
-            session: {
-              ...s.session,
-              presentation: { ...pres, pricingTierId: tierId },
-            },
+            session: { ...s.session, presentation: { ...pres, pricingTierId: tierId } },
           };
         }),
 
@@ -258,10 +244,7 @@ export const useSessionStore = create<SessionStore>()(
           if (!s.session) return s;
           const pres = s.session.presentation ?? createEmptyPresentation();
           return {
-            session: {
-              ...s.session,
-              presentation: { ...pres, openAccountStarted },
-            },
+            session: { ...s.session, presentation: { ...pres, openAccountStarted } },
           };
         }),
 
@@ -271,16 +254,13 @@ export const useSessionStore = create<SessionStore>()(
           const pres = s.session.presentation ?? createEmptyPresentation();
           const interactiveProof = reduceInteractiveDemo(pres.interactiveProof, event);
           return {
-            session: {
-              ...s.session,
-              presentation: { ...pres, interactiveProof },
-            },
+            session: { ...s.session, presentation: { ...pres, interactiveProof } },
           };
         }),
     }),
     {
       name: "axiom-session",
-      version: 2,
+      version: 4,
       migrate: (persisted: unknown, _version: number) => {
         const state = persisted as { session?: Session | null };
         if (state?.session) {
@@ -289,19 +269,21 @@ export const useSessionStore = create<SessionStore>()(
             state.session.presentation = createEmptyPresentation();
           } else {
             const p = state.session.presentation as Record<string, unknown>;
-            // Patch missing pricingAccepted flag
             if (p.pricingAccepted === undefined) p.pricingAccepted = false;
-            // Patch missing interactiveProof (added after initial release)
             if (p.interactiveProof == null) {
               p.interactiveProof = createInitialInteractiveDemoState();
             }
           }
-          // Patch missing array fields from older session formats
+          // Patch scalar and array fields
           const s = state.session as Record<string, unknown>;
+          if (typeof s.repNotes !== "string") s.repNotes = "";
           if (!Array.isArray(s.coachingPrompts)) s.coachingPrompts = [];
           if (!Array.isArray(s.signals)) s.signals = [];
           if (!Array.isArray(s.objections)) s.objections = [];
           if (!Array.isArray(s.salesSteps)) s.salesSteps = [];
+          // Patch V3→V4 additions
+          if (!Array.isArray(s.constraints)) s.constraints = [];
+          if (s.closeOutcome === undefined) s.closeOutcome = null;
         }
         return persisted;
       },

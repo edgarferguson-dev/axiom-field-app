@@ -5,12 +5,17 @@ function clamp(value: number, min = 0, max = 100) {
 }
 
 export function calculateScore(session: Session): PerformanceScore {
-  const greenCount = session.signals.filter((s) => s === "green").length;
-  const yellowCount = session.signals.filter((s) => s === "yellow").length;
-  const redCount = session.signals.filter((s) => s === "red").length;
-  const objectionCount = session.objections.length;
-  const stepCount = session.salesSteps.length;
-  const promptCount = session.coachingPrompts.length;
+  const signals = session.signals ?? [];
+  const objections = session.objections ?? [];
+  const salesSteps = session.salesSteps ?? [];
+  const coachingPrompts = session.coachingPrompts ?? [];
+
+  const greenCount = signals.filter((s) => s === "green").length;
+  const yellowCount = signals.filter((s) => s === "yellow").length;
+  const redCount = signals.filter((s) => s === "red").length;
+  const objectionCount = objections.length;
+  const stepCount = salesSteps.length;
+  const promptCount = coachingPrompts.length;
   const coverageRatio = getObjectionCoverage(session);
 
   const uncoveredPenalty = Math.max(0, objectionCount - stepCount) * 6;

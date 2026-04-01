@@ -109,10 +109,17 @@ export default function RecapPage() {
   useEffect(() => {
     if (!session) return;
     setPhase("recap");
-  }, [session, setPhase]);
+  }, [session?.id, setPhase]);
+
+  /** Disposition finalize already calls setScore — mirror into local UI state without refetching. */
+  useEffect(() => {
+    if (!session?.score || localScore) return;
+    setLocalScore(session.score);
+  }, [session?.score, localScore]);
 
   useEffect(() => {
     if (!session?.id || localScore) return;
+    if (session.score) return;
 
     let cancelled = false;
 
@@ -147,7 +154,7 @@ export default function RecapPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.id, localScore, setScore]);
+  }, [session?.id, session?.score, localScore, setScore]);
 
   const durationMs =
     session?.completedAt && session?.startedAt
@@ -322,7 +329,7 @@ export default function RecapPage() {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-xl font-semibold">
-                    {session?.coachingPrompts.length ?? 0}
+                    {session?.coachingPrompts?.length ?? 0}
                   </p>
                   <p className="mt-0.5 text-xs text-muted">Coaching Prompts</p>
                 </div>
