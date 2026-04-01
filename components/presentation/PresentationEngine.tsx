@@ -19,6 +19,8 @@ type PresentationEngineProps = {
   variant?: "default" | "continuous";
 };
 
+const EMPTY_SLIDES: PresentationSlide[] = [];
+
 function findSlideIndex(slides: PresentationSlide[], type: SlideType): number {
   const idx = slides.findIndex((s) => s.type === type);
   return idx >= 0 ? idx : 0;
@@ -45,7 +47,8 @@ export function PresentationEngine({
     (s) => s.dispatchInteractiveProofEvent
   );
 
-  const slides = presentation?.generatedSlides ?? [];
+  const generatedSlides = presentation?.generatedSlides;
+  const slides = generatedSlides ?? EMPTY_SLIDES;
 
   const [index, setIndex] = useState(0);
 
@@ -62,10 +65,11 @@ export function PresentationEngine({
   }, [slides.length]);
 
   useEffect(() => {
-    if (!slides.length) return;
+    const list = generatedSlides;
+    if (!list?.length) return;
     if (!proceedToPricingSignal) return;
-    setIndex(findSlideIndex(slides, "pricing"));
-  }, [proceedToPricingSignal, slides]);
+    setIndex(findSlideIndex(list, "pricing"));
+  }, [proceedToPricingSignal, generatedSlides]);
 
   const interactiveProof = presentation?.interactiveProof;
   const interactiveProofCompleted = interactiveProof?.step === "confirmed";
