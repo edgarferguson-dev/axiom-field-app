@@ -133,7 +133,7 @@ export default function ConstraintsPage({
             Phase 2 · Constraints
           </p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-            What's blocking this business?
+            What&apos;s blocking this business?
           </h2>
           <p className="mt-1 text-sm text-muted">
             Select the constraints you see. Tap a selected item to cycle severity.

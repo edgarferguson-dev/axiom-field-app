@@ -28,8 +28,8 @@ export default function OfferFitPage({
   }, [session?.id, setPhase]);
 
   const fit = useMemo(
-    () => buildOfferFit(session?.constraints ?? [], session?.business?.type),
-    [session?.constraints, session?.business?.type]
+    () => buildOfferFit(session?.constraints ?? []),
+    [session?.constraints]
   );
 
   if (!session) {
@@ -79,7 +79,7 @@ export default function OfferFitPage({
             Phase 4 · Offer Fit
           </p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-            Here's what fits.
+            Here&apos;s what fits.
           </h2>
           <p className="mt-1 text-sm text-muted">
             {session.business?.name ?? "This business"} · Based on {constraints.length || "no"} identified constraint{constraints.length !== 1 ? "s" : ""}
@@ -137,7 +137,7 @@ export default function OfferFitPage({
         {fit.components.length > 0 && (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
             <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">
-              What's Included
+              What&apos;s Included
             </p>
             <div className="space-y-3">
               {fit.components.map((comp) => (

@@ -179,8 +179,7 @@ function buildEffect(components: SolutionComponent[], tier: PackageTier): string
 // ── Public API ─────────────────────────────────────────────────────────────
 
 export function buildOfferFit(
-  constraints: BusinessConstraint[],
-  businessType?: string
+  constraints: BusinessConstraint[]
 ): OfferFitResult {
   if (constraints.length === 0) {
     return {
