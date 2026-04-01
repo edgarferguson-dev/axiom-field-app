@@ -43,7 +43,7 @@ type SessionStore = {
   addSalesStep: (step: SalesStep) => void;
   addSignal: (signal: Signal) => void;
   setDisposition: (disposition: DispositionResult) => void;
-  startSession: (business?: BusinessProfile) => void;
+  startSession: (repName: string) => string;
   reset: () => void;
 
   ensurePresentationSlides: () => void;
@@ -84,21 +84,22 @@ export const useSessionStore = create<SessionStore>()(
           disposition: null,
         }),
 
-      startSession: (business) =>
+      startSession: (repName) => {
+        const id =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `ax-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
         set({
           session: {
-            id:
-              typeof crypto !== "undefined" && "randomUUID" in crypto
-                ? crypto.randomUUID()
-                : `${Date.now()}`,
-            repName: "",
+            id,
+            repName,
             createdAt: Date.now(),
-            phase: business ? "field-read" : "intake",
-            business: business ?? null,
+            phase: "field-read",
+            business: null,
             preCallIntel: null,
             coachingPrompts: [],
             repNotes: "",
-            startedAt: Date.now(),
+            startedAt: null,
             completedAt: null,
             score: null,
             presentation: createEmptyPresentation(),
@@ -107,7 +108,9 @@ export const useSessionStore = create<SessionStore>()(
             salesSteps: [],
           },
           disposition: null,
-        }),
+        });
+        return id;
+      },
 
       setPhase: (phase) =>
         set((s) => (s.session ? { session: { ...s.session, phase } } : s)),

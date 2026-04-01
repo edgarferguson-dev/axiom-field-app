@@ -8,13 +8,9 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Topbar } from "@/components/layout/topbar";
 import { useSessionStore } from "@/store/session-store";
 
-function generateSessionId(): string {
-  return `ax-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
 export default function AppHomePage() {
   const router = useRouter();
-  const initSession = useSessionStore((s) => s.initSession);
+  const startSession = useSessionStore((s) => s.startSession);
 
   const [repName, setRepName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,8 +20,7 @@ export default function AppHomePage() {
     if (!repName.trim()) return;
 
     setLoading(true);
-    const id = generateSessionId();
-    initSession(id, repName.trim());
+    const id = startSession(repName.trim());
     router.push(`/session/${id}/field-read`);
   }
 

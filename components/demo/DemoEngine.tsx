@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/store/session-store";
 import { resolveObjection, getSignalForObjection } from "@/lib/flows/salesEngine";
 import { PublicPrivateSplit } from "@/components/layout/public-private-split";
@@ -66,8 +67,8 @@ function createCoachingPrompt(type: ObjectionType, phase: SessionPhase): Coachin
 }
 
 export default function DemoEngine() {
+  const router = useRouter();
   const session = useSessionStore((s) => s.session);
-  const startSession = useSessionStore((s) => s.startSession);
   const addObjection = useSessionStore((s) => s.addObjection);
   const addSalesStep = useSessionStore((s) => s.addSalesStep);
   const addSignal = useSessionStore((s) => s.addSignal);
@@ -102,7 +103,7 @@ export default function DemoEngine() {
           <div className="mt-1 text-xs text-muted">Start a session to begin the demo simulation.</div>
         </div>
         <button
-          onClick={() => startSession()}
+          onClick={() => router.push("/")}
           className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-glow transition hover:opacity-90"
         >
           Start Session
