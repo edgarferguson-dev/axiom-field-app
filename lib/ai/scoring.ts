@@ -1,4 +1,4 @@
-import { anthropic } from "./client";
+import { anthropic, parseAIJSON } from "./client";
 import type { PerformanceScore, Session } from "@/types/session";
 
 const SYSTEM_PROMPT = `You are a sales performance analyst for Axiom Field — a premium field sales coaching platform.
@@ -51,5 +51,5 @@ Return a JSON object:
   const text =
     message.content[0].type === "text" ? message.content[0].text : "{}";
 
-  return JSON.parse(text) as PerformanceScore;
+  return parseAIJSON<PerformanceScore>(text);
 }

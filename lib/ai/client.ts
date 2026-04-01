@@ -7,3 +7,9 @@ if (!process.env.ANTHROPIC_API_KEY) {
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY ?? "",
 });
+
+/** Strip markdown code fences Claude sometimes adds despite "no markdown" instructions */
+export function parseAIJSON<T>(text: string): T {
+  const stripped = text.replace(/^```(?:json)?\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+  return JSON.parse(stripped) as T;
+}

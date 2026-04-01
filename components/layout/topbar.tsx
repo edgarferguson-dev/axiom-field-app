@@ -26,8 +26,7 @@ export function Topbar({
   status,
 }: TopbarProps) {
   const session = useSessionStore((s) => s.session);
-  const signals = useSessionStore((s) => s.session?.signals ?? []);
-  const trend = signals.slice(-3);
+  const trend = (session?.signals ?? []).slice(-3);
 
   const resolvedSubtitle =
     subtitle ??

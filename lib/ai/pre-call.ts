@@ -1,4 +1,4 @@
-import { anthropic } from "./client";
+import { anthropic, parseAIJSON } from "./client";
 import type { PreCallIntel, BusinessProfile } from "@/types/session";
 
 const SYSTEM_PROMPT = `You are a sales intelligence AI embedded in Axiom Field — a premium field sales tool.
@@ -40,5 +40,5 @@ Return a JSON object matching this exact shape:
   const text =
     message.content[0].type === "text" ? message.content[0].text : "{}";
 
-  return JSON.parse(text) as PreCallIntel;
+  return parseAIJSON<PreCallIntel>(text);
 }

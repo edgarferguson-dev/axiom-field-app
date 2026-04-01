@@ -1,4 +1,4 @@
-import { anthropic } from "./client";
+import { anthropic, parseAIJSON } from "./client";
 import type { CoachingPrompt, BusinessProfile, PreCallIntel } from "@/types/session";
 
 const SYSTEM_PROMPT = `You are a real-time sales coach embedded in Axiom Field — a premium in-field sales tool.
@@ -46,5 +46,5 @@ signal meanings: green = momentum building, yellow = need to redirect, red = obj
   const text =
     message.content[0].type === "text" ? message.content[0].text : "{}";
 
-  return JSON.parse(text) as Omit<CoachingPrompt, "id" | "timestamp">;
+  return parseAIJSON<Omit<CoachingPrompt, "id" | "timestamp">>(text);
 }

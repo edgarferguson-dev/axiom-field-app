@@ -76,8 +76,8 @@ export default function DemoEngine() {
   const reset = useSessionStore((s) => s.reset);
 
   const lastStep = useSessionStore((s) => s.session?.salesSteps.at(-1));
-  const signals = useSessionStore((s) => s.session?.signals ?? []);
-  const objectionCount = useSessionStore((s) => s.session?.objections.length ?? 0);
+  const signals = session?.signals ?? [];
+  const objectionCount = session?.objections.length ?? 0;
 
   const handleObjection = (type: ObjectionType) => {
     if (!session) return;

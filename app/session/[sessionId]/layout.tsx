@@ -4,11 +4,13 @@ import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Topbar } from "@/components/layout/topbar";
 import { ProgressHeader } from "@/components/layout/progress-header";
+import { LiveCoachingOverlay } from "@/components/coaching/LiveCoachingOverlay";
 import { useSessionStore } from "@/store/session-store";
 import type { SessionPhase } from "@/types/session";
 
 function getPhaseFromPath(pathname: string): SessionPhase {
   if (pathname.includes("/demo")) return "live-demo";
+  if (pathname.includes("/disposition")) return "debrief";
   if (pathname.includes("/recap")) return "debrief";
   return "pre-call";
 }
@@ -35,6 +37,7 @@ export default function SessionLayout({
       />
       <ProgressHeader currentPhase={phase} />
       {children}
+      <LiveCoachingOverlay />
     </AppShell>
   );
 }

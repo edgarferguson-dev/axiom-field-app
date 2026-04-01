@@ -91,8 +91,8 @@ export default function DemoPage({
 
   function handleEndSession() {
     markCompleted();
-    setPhase("debrief");
-    router.push(`/session/${params.sessionId}/recap`);
+    setPhase("disposition");
+    router.push(`/session/${params.sessionId}/disposition`);
   }
 
   const sig = activePrompt ? SIGNAL_CONFIG[activePrompt.signal] : null;

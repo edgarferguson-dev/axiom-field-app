@@ -1,17 +1,127 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { SessionShell } from "@/components/layout/session-shell";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
 import type { BusinessProfile, PreCallIntel, RiskBand } from "@/types/session";
 
+// ── Preset options ─────────────────────────────────────────────────────────
+
+const BUSINESS_TYPES = [
+  "Hair Salon / Barber Shop",
+  "HVAC / Plumbing",
+  "Dental Office",
+  "Auto Repair / Mechanic",
+  "Restaurant / Café",
+  "Real Estate Agent",
+  "Gym / Fitness Studio",
+  "Landscaping / Lawn Care",
+  "Pest Control",
+  "Roofing / Contractor",
+  "Insurance Agency",
+  "Medical / Clinic",
+  "Retail Store",
+  "Cleaning Service",
+  "Electrician",
+  "Chiropractor",
+  "Other",
+];
+
+const LEAD_SYSTEMS = [
+  "No system — phone only",
+  "Google My Business",
+  "Facebook / Instagram DMs",
+  "Word of mouth only",
+  "Spreadsheet / notes",
+  "Paper & walk-in only",
+  "Basic CRM",
+  "Other",
+];
+
+const LEAD_SOURCES = [
+  "Walk-ins",
+  "Google / SEO",
+  "Facebook Ads",
+  "Referrals / word of mouth",
+  "Yelp / directory listing",
+  "Instagram",
+  "Door hangers / flyers",
+  "Cold calls",
+  "Mixed sources",
+  "Other",
+];
+
+// ── Risk config ────────────────────────────────────────────────────────────
+
 const RISK_CONFIG: Record<RiskBand, { label: string; color: string; bg: string }> = {
   high: { label: "High Risk", color: "text-signal-red", bg: "bg-signal-red/10 border-signal-red/30" },
   medium: { label: "Medium Risk", color: "text-signal-yellow", bg: "bg-signal-yellow/10 border-signal-yellow/30" },
   low: { label: "Low Risk", color: "text-signal-green", bg: "bg-signal-green/10 border-signal-green/30" },
 };
+
+// ── Combobox ───────────────────────────────────────────────────────────────
+
+function SelectField({
+  label,
+  options,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [custom, setCustom] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (e.target.value === "Other") {
+      setCustom(true);
+      onChange("");
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } else {
+      setCustom(false);
+      onChange(e.target.value);
+    }
+  };
+
+  const selectValue = custom ? "Other" : (options.includes(value) ? value : value ? "Other" : "");
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+        {label}
+      </label>
+      <select
+        value={selectValue}
+        onChange={handleSelect}
+        className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
+      >
+        <option value="" disabled>{placeholder ?? `Select ${label}`}</option>
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+      {custom && (
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={`Enter ${label.toLowerCase()}…`}
+          className="mt-2 w-full rounded-xl border border-accent/40 bg-surface px-4 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
 
 export default function FieldReadPage({
   params,
@@ -31,38 +141,63 @@ export default function FieldReadPage({
   const [intel, setIntel] = useState<PreCallIntel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleScan(e: React.FormEvent) {
-    e.preventDefault();
+  // Auto-trigger AI scan when name + type are both filled
+  useEffect(() => {
+    if (!form.name.trim() || !form.type.trim() || intel || loading) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      runScan();
+    }, 800);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.name, form.type]);
+
+  async function runScan() {
     setLoading(true);
     setError(null);
-
     try {
       const res = await fetch("/api/pre-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-
       if (!res.ok) throw new Error("API error");
-
       const data = (await res.json()) as PreCallIntel;
       setIntel(data);
       setBusiness(form);
       setPreCallIntel(data);
     } catch {
-      setError("Unable to generate intelligence. Check your API key and try again.");
+      setError("AI scan failed. You can still continue manually.");
     } finally {
       setLoading(false);
     }
   }
 
+  function handleManualScan(e: React.FormEvent) {
+    e.preventDefault();
+    runScan();
+  }
+
   function handleBeginDemo() {
+    setBusiness(form);
+    setPhase("live-demo");
+    router.push(`/session/${params.sessionId}/demo`);
+  }
+
+  function handleSkip() {
+    setBusiness(form);
     setPhase("live-demo");
     router.push(`/session/${params.sessionId}/demo`);
   }
 
   const risk = intel ? RISK_CONFIG[intel.riskBand] : null;
+  const canScan = form.name.trim().length >= 1 && form.type.trim().length >= 1;
 
   return (
     <SessionShell>
@@ -76,98 +211,115 @@ export default function FieldReadPage({
             Scan the business before you knock.
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Enter what you observe at the door. AI generates your opening intelligence.
+            Select the business type — AI generates your opening intelligence automatically.
           </p>
         </div>
 
         {/* Input form */}
         {!intel && (
           <form
-            onSubmit={handleScan}
+            onSubmit={handleManualScan}
             className="rounded-2xl border border-border bg-card p-6 shadow-soft space-y-4"
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted uppercase tracking-wider">
-                  Business Name
-                </label>
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. Bella Vista Salon"
-                  required
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted uppercase tracking-wider">
-                  Business Type
-                </label>
-                <input
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  placeholder="e.g. Hair salon, HVAC, Dentist"
-                  required
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted uppercase tracking-wider">
-                  Current Lead System
-                </label>
-                <input
-                  value={form.currentSystem}
-                  onChange={(e) => setForm({ ...form, currentSystem: e.target.value })}
-                  placeholder="e.g. Phone only, no CRM"
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted uppercase tracking-wider">
-                  Primary Lead Source
-                </label>
-                <input
-                  value={form.leadSource}
-                  onChange={(e) => setForm({ ...form, leadSource: e.target.value })}
-                  placeholder="e.g. Walk-ins, Google, Referrals"
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
-                />
-              </div>
-            </div>
+            {/* Business name — text input */}
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted uppercase tracking-wider">
-                Door Observations
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+                Business Name
               </label>
-              <textarea
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                rows={2}
-                placeholder="Busy lobby, staff overwhelmed, no receptionist visible…"
-                className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition resize-none"
+              <input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Bella Vista Salon"
+                required
+                className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
               />
             </div>
 
-            {error && (
-              <p className="text-sm text-signal-red">{error}</p>
-            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SelectField
+                label="Business Type"
+                options={BUSINESS_TYPES}
+                value={form.type}
+                onChange={(v) => setForm({ ...form, type: v })}
+                placeholder="Select type…"
+              />
+              <SelectField
+                label="Current Lead System"
+                options={LEAD_SYSTEMS}
+                value={form.currentSystem}
+                onChange={(v) => setForm({ ...form, currentSystem: v })}
+                placeholder="Select system…"
+              />
+              <SelectField
+                label="Primary Lead Source"
+                options={LEAD_SOURCES}
+                value={form.leadSource}
+                onChange={(v) => setForm({ ...form, leadSource: v })}
+                placeholder="Select source…"
+              />
+              <div>
+                <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+                  Door Observations
+                </label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  rows={2}
+                  placeholder="Busy lobby, no receptionist, overwhelmed staff…"
+                  className="w-full resize-none rounded-xl border border-border bg-surface px-4 py-2.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition"
+                />
+              </div>
+            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-40"
-            >
+            {/* AI status row */}
+            <div className="flex items-center gap-3">
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <div className="flex flex-1 items-center gap-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3">
+                  <svg className="h-4 w-4 animate-spin text-accent" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Scanning business…
-                </span>
+                  <span className="text-sm text-accent">Scanning business…</span>
+                </div>
               ) : (
-                "Generate Pre-Call Intelligence →"
+                <button
+                  type="submit"
+                  disabled={!canScan || loading}
+                  className="flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-40"
+                >
+                  Generate Pre-Call Intelligence →
+                </button>
               )}
-            </button>
+              {canScan && !loading && (
+                <button
+                  type="button"
+                  onClick={handleSkip}
+                  className="rounded-xl border border-border px-4 py-3 text-sm text-muted transition hover:border-accent/40 hover:text-foreground"
+                >
+                  Skip
+                </button>
+              )}
+            </div>
+
+            {error && (
+              <div className="flex items-center justify-between rounded-xl border border-signal-red/20 bg-signal-red/5 px-4 py-3">
+                <p className="text-sm text-signal-red">{error}</p>
+                <button
+                  type="button"
+                  onClick={handleSkip}
+                  className="ml-4 text-xs font-medium text-accent underline underline-offset-2"
+                >
+                  Continue without scan →
+                </button>
+              </div>
+            )}
+
+            {/* Auto-scan hint */}
+            {!loading && canScan && !error && (
+              <p className="text-center text-xs text-muted">
+                AI scan triggers automatically when name and type are filled
+              </p>
+            )}
           </form>
         )}
 

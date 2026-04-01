@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
 
@@ -10,10 +10,12 @@ export function LiveCoachingOverlay() {
   const [dismissed, setDismissed] = useState(false);
   const [lastId, setLastId] = useState<string | undefined>(undefined);
 
-  if (latest?.id !== lastId) {
-    setLastId(latest?.id);
-    if (dismissed) setDismissed(false);
-  }
+  useEffect(() => {
+    if (latest?.id !== lastId) {
+      setLastId(latest?.id);
+      if (dismissed) setDismissed(false);
+    }
+  }, [latest?.id]);
 
   if (!latest || dismissed) return null;
 
