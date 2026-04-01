@@ -92,13 +92,18 @@ function ScoreBar({
 
 export default function RecapPage() {
   const router = useRouter();
-  const { session, setScore, clearSession } = useSessionStore();
+  const { session, setScore, clearSession, setPhase } = useSessionStore();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localScore, setLocalScore] = useState<PerformanceScore | null>(
     session?.score ?? null
   );
+
+  useEffect(() => {
+    if (!session) return;
+    setPhase("recap");
+  }, [session, setPhase]);
 
   useEffect(() => {
     if (!session || localScore) return;
@@ -251,6 +256,17 @@ export default function RecapPage() {
                 </ul>
               </div>
             </div>
+
+            {session?.repNotes?.trim() ? (
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+                  Rep notes
+                </p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {session.repNotes.trim()}
+                </p>
+              </div>
+            ) : null}
 
             {/* Session metadata */}
             <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">

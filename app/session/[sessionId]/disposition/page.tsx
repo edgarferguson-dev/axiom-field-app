@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/store/session-store";
 import { runDisposition } from "@/lib/flows/dispositionEngine";
@@ -37,6 +37,11 @@ export default function DispositionPage({
 
   const result = useMemo(() => (session ? runDisposition(session) : null), [session]);
   const score = useMemo(() => (session ? calculateScore(session) : null), [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    setPhase("disposition");
+  }, [session, setPhase]);
 
   if (!session || !result || !score) {
     return (
@@ -129,6 +134,55 @@ export default function DispositionPage({
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Summary</p>
               <p className="mt-2 text-sm leading-relaxed">{result.summary}</p>
             </div>
+
+            {session.repNotes.trim().length > 0 && (
+              <div className="md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Rep notes</p>
+                <p className="mt-2 whitespace-pre-wrap rounded-2xl border border-border bg-surface p-4 text-sm leading-relaxed">
+                  {session.repNotes.trim()}
+                </p>
+              </div>
+            )}
+
+            {result.presentation && (
+              <div className="md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+                  Presentation Context
+                </p>
+                <div className="mt-2 grid gap-3 rounded-2xl border border-border bg-surface p-4 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted">Proof engaged</span>
+                    <span className="font-medium text-foreground">
+                      {result.presentation.interactiveProofEngaged ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted">Pricing response</span>
+                    <span className="font-medium text-foreground">
+                      {result.presentation.pricingResponse ?? "unknown"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted">Pricing accepted</span>
+                    <span className="font-medium text-foreground">
+                      {result.presentation.pricingAccepted ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted">Tier selected</span>
+                    <span className="font-medium text-foreground">
+                      {result.presentation.pricingTierSelected ?? "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted">Open account started</span>
+                    <span className="font-medium text-foreground">
+                      {result.presentation.openAccountStarted ? "Yes" : "No"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Hidden Objection</p>

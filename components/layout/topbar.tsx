@@ -1,11 +1,13 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
 
 type TopbarProps = {
   title?: string;
   subtitle?: string;
+  /** Overrides session phase in the status pill (e.g. home: "Ready") */
   status?: string;
 };
 
@@ -23,8 +25,9 @@ const PHASE_LABELS: Record<string, string> = {
 export function Topbar({
   title = "Axiom Field",
   subtitle,
-  status,
+  status: statusOverride,
 }: TopbarProps) {
+  const pathname = usePathname();
   const session = useSessionStore((s) => s.session);
   const trend = (session?.signals ?? []).slice(-3);
 
@@ -34,9 +37,16 @@ export function Topbar({
       ? `${session.repName} · ${session.business?.name ?? "New Session"}`
       : "Sales Execution Platform");
 
-  const resolvedStatus = status ?? (session?.phase ? PHASE_LABELS[session.phase] : "Phase V2B");
-
-  const isLive = session?.phase === "live-demo";
+  const onDemoRoute = pathname.includes("/demo");
+  const phase = session?.phase;
+  const phaseLabel =
+    phase && phase in PHASE_LABELS
+      ? PHASE_LABELS[phase as keyof typeof PHASE_LABELS]
+      : phase ?? "Active";
+  const showLiveBadge =
+    !statusOverride && (phase === "live-demo" || onDemoRoute);
+  const badgeLabel = statusOverride ?? (showLiveBadge ? "● Live" : phaseLabel);
+  const showSignalTrend = trend.length > 0 && !onDemoRoute;
 
   return (
     <header className="border-b border-border bg-card/80 backdrop-blur">
@@ -47,8 +57,8 @@ export function Topbar({
         </div>
 
         <div className="flex items-center gap-3">
-          {trend.length > 0 && (
-            <div className="flex items-center gap-1">
+          {showSignalTrend && (
+            <div className="flex items-center gap-1" aria-label="Recent signal trend">
               {trend.map((s, i) => (
                 <span
                   key={i}
@@ -67,13 +77,13 @@ export function Topbar({
 
           <div
             className={cn(
-              "rounded-full border px-3 py-1 text-xs",
-              isLive
+              "rounded-full border px-3 py-1 text-xs font-medium",
+              showLiveBadge
                 ? "border-signal-green/30 bg-signal-green/10 text-signal-green"
                 : "border-border bg-background text-muted"
             )}
           >
-            {isLive ? "● Live" : resolvedStatus}
+            {badgeLabel}
           </div>
         </div>
       </div>

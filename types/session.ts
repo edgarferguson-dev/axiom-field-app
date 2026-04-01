@@ -1,3 +1,5 @@
+import type { SessionPresentationState } from "@/types/presentation";
+
 // Core phase flow — extended with V2B phases
 export type SessionPhase =
   | "pre-call"
@@ -87,6 +89,8 @@ export type Session = {
   startedAt: number | null;
   completedAt: number | null;
   score: PerformanceScore | null;
+  /** Buyer presentation / proof / pricing milestones — source of truth in Zustand */
+  presentation: SessionPresentationState;
   // V2B: static demo signal tracking
   signals: Signal[];
   objections: ObjectionType[];

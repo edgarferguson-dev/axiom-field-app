@@ -20,4 +20,15 @@ export interface DispositionResult {
   confidence: number;
   signalTrend: "improving" | "declining" | "mixed" | "neutral";
   coverageScore: number;
+
+  // Optional dual-layer context (passed from presentation flow; not required).
+  presentation?: {
+    presentedSlideTypes?: string[];
+    proofStepShown?: boolean;
+    interactiveProofEngaged?: boolean;
+    pricingTierSelected?: string | null;
+    pricingAccepted?: boolean;
+    pricingResponse?: "accept" | "hesitate" | "reject" | "unknown";
+    openAccountStarted?: boolean;
+  };
 }

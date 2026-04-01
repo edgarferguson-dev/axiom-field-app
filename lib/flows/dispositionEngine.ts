@@ -1,6 +1,8 @@
 import { Session, getSignalTrend, getObjectionCoverage } from "@/types/session";
 import { DispositionResult } from "@/types/disposition";
 
+export type DispositionContext = NonNullable<DispositionResult["presentation"]>;
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -14,6 +16,24 @@ function resolveSignalTrend(session: Session): DispositionResult["signalTrend"] 
   if (redCount >= 2) return "declining";
   if (greenCount > 0 && redCount > 0) return "mixed";
   return "neutral";
+}
+
+function dispositionContextFromSession(session: Session): DispositionContext | undefined {
+  const p = session.presentation;
+  if (!p.generatedSlides?.length) return undefined;
+
+  return {
+    presentedSlideTypes: p.generatedSlides.map((s) => s.type),
+    proofStepShown: p.generatedSlides.some((s) => s.type === "interactive-proof"),
+    interactiveProofEngaged: p.interactiveProof.step === "confirmed",
+    pricingTierSelected: p.pricingTierId,
+    pricingAccepted: p.pricingAccepted,
+    pricingResponse:
+      p.pricingResponse === null || p.pricingResponse === undefined
+        ? "unknown"
+        : p.pricingResponse,
+    openAccountStarted: p.openAccountStarted,
+  };
 }
 
 export function runDisposition(session: Session): DispositionResult {
@@ -84,14 +104,32 @@ export function runDisposition(session: Session): DispositionResult {
       "The session concluded without a clear outcome. Another touchpoint is needed before a path forward is visible.",
   };
 
+  const ctx = dispositionContextFromSession(session);
+
+  const presentationLine =
+    ctx && (ctx.presentedSlideTypes?.length || ctx.proofStepShown || ctx.pricingTierSelected)
+      ? `Presented: ${ctx.presentedSlideTypes?.join(" → ") ?? "—"}. Proof: ${
+          ctx.interactiveProofEngaged ? "engaged" : ctx.proofStepShown ? "shown" : "not shown"
+        }. Pricing tier: ${
+          ctx.pricingTierSelected ?? "none"
+        } (accepted: ${ctx.pricingAccepted ? "yes" : "no"}). Account started: ${
+          ctx.openAccountStarted ? "yes" : "no"
+        }.`
+      : undefined;
+
+  const baseSummary = presentationLine
+    ? `${outcomeSummary[outcome]} ${presentationLine}`
+    : outcomeSummary[outcome];
+
   return {
     outcome,
-    summary: outcomeSummary[outcome],
+    summary: baseSummary,
     hiddenObjection,
     repMistake,
     nextAction,
     confidence: clamp(confidenceBase, 52, 96),
     signalTrend,
     coverageScore,
+    presentation: ctx,
   };
 }

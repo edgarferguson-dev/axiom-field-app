@@ -129,6 +129,7 @@ export default function FieldReadPage({
   params: { sessionId: string };
 }) {
   const router = useRouter();
+  const session = useSessionStore((s) => s.session);
   const { setBusiness, setPreCallIntel, setPhase } = useSessionStore();
 
   const [form, setForm] = useState<BusinessProfile>({
@@ -142,6 +143,11 @@ export default function FieldReadPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    setPhase("field-read");
+  }, [session, setPhase]);
 
   // Auto-trigger AI scan when name + type are both filled
   useEffect(() => {

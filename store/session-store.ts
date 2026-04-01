@@ -11,13 +11,22 @@ import type {
   SalesStep,
   Signal,
 } from "@/types/session";
+import { createEmptyPresentation } from "@/types/presentation";
+import type { MaterialSummary } from "@/lib/flows/materialEngine";
+import {
+  buildStrategyPackage,
+  generatePresentationSlides,
+} from "@/lib/flows/presentationEngine";
+import {
+  reduceInteractiveDemo,
+  type InteractiveDemoEvent,
+} from "@/lib/flows/interactiveDemoEngine";
 import type { DispositionResult } from "@/types/disposition";
 
 type SessionStore = {
   session: Session | null;
   disposition: DispositionResult | null;
 
-  // Existing actions
   initSession: (id: string, repName: string) => void;
   setPhase: (phase: SessionPhase) => void;
   setBusiness: (business: BusinessProfile) => void;
@@ -29,13 +38,21 @@ type SessionStore = {
   markCompleted: () => void;
   clearSession: () => void;
 
-  // V2B actions
   addObjection: (objection: ObjectionType) => void;
   addSalesStep: (step: SalesStep) => void;
   addSignal: (signal: Signal) => void;
   setDisposition: (disposition: DispositionResult) => void;
   startSession: (business?: BusinessProfile) => void;
   reset: () => void;
+
+  ensurePresentationSlides: () => void;
+  applyPresentationMaterial: (summary: MaterialSummary) => void;
+  setPresentationPricingTierId: (tierId: string | null) => void;
+  setPresentationPricingResponse: (
+    response: "accept" | "hesitate" | "reject" | null
+  ) => void;
+  setPresentationOpenAccountStarted: (started: boolean) => void;
+  dispatchInteractiveProofEvent: (event: InteractiveDemoEvent) => void;
 };
 
 export const useSessionStore = create<SessionStore>()(
@@ -58,6 +75,7 @@ export const useSessionStore = create<SessionStore>()(
             startedAt: null,
             completedAt: null,
             score: null,
+            presentation: createEmptyPresentation(),
             signals: [],
             objections: [],
             salesSteps: [],
@@ -65,7 +83,6 @@ export const useSessionStore = create<SessionStore>()(
           disposition: null,
         }),
 
-      // V2B: start a session without a repName (demo flow)
       startSession: (business) =>
         set({
           session: {
@@ -83,6 +100,7 @@ export const useSessionStore = create<SessionStore>()(
             startedAt: Date.now(),
             completedAt: null,
             score: null,
+            presentation: createEmptyPresentation(),
             signals: [],
             objections: [],
             salesSteps: [],
@@ -124,7 +142,6 @@ export const useSessionStore = create<SessionStore>()(
 
       clearSession: () => set({ session: null, disposition: null }),
 
-      // V2B actions
       addObjection: (objection) =>
         set((s) =>
           s.session
@@ -149,7 +166,129 @@ export const useSessionStore = create<SessionStore>()(
       setDisposition: (disposition) => set({ disposition }),
 
       reset: () => set({ session: null, disposition: null }),
+
+      ensurePresentationSlides: () =>
+        set((s) => {
+          if (!s.session?.business) return s;
+          const prev = s.session.presentation;
+          if (prev.generatedSlides.length > 0) return s;
+          const strategy = buildStrategyPackage(
+            s.session.business,
+            s.session.preCallIntel,
+            prev.materialSummary
+          );
+          const generatedSlides = generatePresentationSlides(
+            s.session.business,
+            strategy,
+            s.session.preCallIntel
+          );
+          return {
+            session: {
+              ...s.session,
+              presentation: {
+                ...prev,
+                strategyPackage: strategy,
+                generatedSlides,
+              },
+            },
+          };
+        }),
+
+      applyPresentationMaterial: (summary) =>
+        set((s) => {
+          if (!s.session?.business) return s;
+          const strategy = buildStrategyPackage(
+            s.session.business,
+            s.session.preCallIntel,
+            summary
+          );
+          const generatedSlides = generatePresentationSlides(
+            s.session.business,
+            strategy,
+            s.session.preCallIntel
+          );
+          const empty = createEmptyPresentation();
+          return {
+            session: {
+              ...s.session,
+              presentation: {
+                ...empty,
+                materialSummary: summary,
+                strategyPackage: strategy,
+                generatedSlides,
+              },
+            },
+          };
+        }),
+
+      setPresentationPricingTierId: (tierId) =>
+        set((s) => {
+          if (!s.session) return s;
+          const pres = s.session.presentation;
+          return {
+            session: {
+              ...s.session,
+              presentation: { ...pres, pricingTierId: tierId },
+            },
+          };
+        }),
+
+      setPresentationPricingResponse: (pricingResponse) =>
+        set((s) => {
+          if (!s.session) return s;
+          const pres = s.session.presentation;
+          return {
+            session: {
+              ...s.session,
+              presentation: {
+                ...pres,
+                pricingResponse,
+                pricingAccepted: pricingResponse === "accept",
+              },
+            },
+          };
+        }),
+
+      setPresentationOpenAccountStarted: (openAccountStarted) =>
+        set((s) => {
+          if (!s.session) return s;
+          const pres = s.session.presentation;
+          return {
+            session: {
+              ...s.session,
+              presentation: { ...pres, openAccountStarted },
+            },
+          };
+        }),
+
+      dispatchInteractiveProofEvent: (event) =>
+        set((s) => {
+          if (!s.session) return s;
+          const pres = s.session.presentation;
+          const interactiveProof = reduceInteractiveDemo(pres.interactiveProof, event);
+          return {
+            session: {
+              ...s.session,
+              presentation: { ...pres, interactiveProof },
+            },
+          };
+        }),
     }),
-    { name: "axiom-session" }
+    {
+      name: "axiom-session",
+      version: 2,
+      migrate: (persisted: unknown, _version: number) => {
+        const state = persisted as { session?: Session | null };
+        if (state?.session) {
+          if (state.session.presentation == null) {
+            state.session.presentation = createEmptyPresentation();
+          } else {
+            const p = state.session.presentation as Record<string, unknown>;
+            if (p.pricingAccepted === undefined) p.pricingAccepted = false;
+          }
+        }
+        return persisted;
+      },
+    }
   )
 );

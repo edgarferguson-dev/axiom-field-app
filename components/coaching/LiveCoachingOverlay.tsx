@@ -7,17 +7,16 @@ import { cn } from "@/lib/utils/cn";
 export function LiveCoachingOverlay() {
   const latest = useSessionStore((s) => s.session?.coachingPrompts.at(-1));
   const promptCount = useSessionStore((s) => s.session?.coachingPrompts.length ?? 0);
-  const [dismissed, setDismissed] = useState(false);
-  const [lastId, setLastId] = useState<string | undefined>(undefined);
+  const [dismissedId, setDismissedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (latest?.id !== lastId) {
-      setLastId(latest?.id);
-      if (dismissed) setDismissed(false);
+    const latestId = latest?.id ?? null;
+    if (latestId && latestId !== dismissedId) {
+      setDismissedId(null);
     }
-  }, [latest?.id]);
+  }, [latest?.id, dismissedId]);
 
-  if (!latest || dismissed) return null;
+  if (!latest || latest.id === dismissedId) return null;
 
   const signalClass = {
     green: "border-signal-green/30 [&_[data-dot]]:bg-signal-green [&_[data-badge]]:bg-signal-green/20 [&_[data-badge]]:text-signal-green",
@@ -43,7 +42,7 @@ export function LiveCoachingOverlay() {
               {latest.signal.toUpperCase()}
             </span>
             <button
-              onClick={() => setDismissed(true)}
+              onClick={() => setDismissedId(latest.id)}
               className="text-muted transition hover:text-foreground"
               aria-label="Dismiss"
             >

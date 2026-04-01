@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SessionShell } from "@/components/layout/session-shell";
 import { PublicPrivateSplit } from "@/components/layout/public-private-split";
+import { PresentationEngine } from "@/components/presentation/PresentationEngine";
+import { UploadSalesMaterial } from "@/components/presentation/UploadSalesMaterial";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
+import { resolveObjection } from "@/lib/flows/salesEngine";
 import type { CoachingPrompt, SignalColor } from "@/types/session";
 
 const SIGNAL_CONFIG: Record<SignalColor, { label: string; dot: string; border: string; text: string }> = {
@@ -42,15 +45,26 @@ export default function DemoPage({
     setPhase,
     markStarted,
     markCompleted,
+    applyPresentationMaterial,
+    addSignal,
+    addObjection,
+    addSalesStep,
   } = useSessionStore();
+
+  useEffect(() => {
+    if (!session) return;
+    setPhase("live-demo");
+  }, [session, setPhase]);
 
   const [loadingCoach, setLoadingCoach] = useState(false);
   const [activePrompt, setActivePrompt] = useState<CoachingPrompt | null>(null);
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proceedToPricingSignal, setProceedToPricingSignal] = useState(0);
 
   function handleStart() {
     markStarted();
+    setPhase("live-demo");
     setStarted(true);
   }
 
@@ -101,82 +115,92 @@ export default function DemoPage({
 
   // ── Public pane (buyer-facing) ──────────────────────────────────────────
   const publicPane = (
-    <div className="space-y-5">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          Live Demo
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-          {business?.name ?? "Business Overview"}
-        </h2>
-        <p className="mt-1 text-sm text-muted">
-          {business?.type} · {business?.leadSource}
-        </p>
-      </div>
-
-      {intel && (
-        <div className="space-y-3">
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted">
-              Current Situation
+    <div className="relative">
+      <div
+        className="pointer-events-none absolute inset-x-0 -top-px h-40 rounded-t-2xl bg-gradient-to-b from-accent/[0.07] via-transparent to-transparent"
+        aria-hidden
+      />
+      <div className="relative space-y-8">
+        <div className="flex items-start justify-between gap-4 border-b border-border/30 pb-6">
+          <div className="min-w-0 space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent/90">
+              Your business
             </p>
-            <p className="text-sm leading-relaxed">{intel.painPattern}</p>
+            <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {business?.name ?? "Business Overview"}
+            </h2>
+            <p className="text-sm text-muted/90">
+              {business?.type} · {business?.leadSource}
+            </p>
           </div>
-
-          <div className="rounded-xl border border-border bg-surface p-4">
-            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted">
-              Opportunity Areas
-            </p>
-            <ul className="space-y-2">
-              {intel.keyOpportunities.map((opp, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm">
-                  <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-accent" />
-                  {opp}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="rounded-xl border border-accent/20 bg-accent/5 p-4">
-            <p className="text-xs text-accent font-medium uppercase tracking-wider mb-1">
-              Estimated Missed Value
-            </p>
-            <p className="text-xl font-semibold text-foreground">
-              {intel.missedValueEstimate}
-            </p>
-            <p className="mt-0.5 text-xs text-muted">per month in uncontacted leads</p>
-          </div>
+          {!started && (
+            <button
+              type="button"
+              onClick={handleStart}
+              className="shrink-0 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_30px_-8px_rgba(59,130,246,0.5)] transition hover:opacity-95"
+            >
+              Start
+            </button>
+          )}
         </div>
-      )}
 
-      {!started && (
-        <button
-          onClick={handleStart}
-          className="w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90"
-        >
-          Start Demo Clock
-        </button>
-      )}
+        <PresentationEngine
+          variant="continuous"
+          proceedToPricingSignal={proceedToPricingSignal}
+          onInteractiveProofMilestone={() => addSignal("green")}
+          onPricingAccept={() => addSignal("green")}
+          onOpenAccount={() => addSignal("green")}
+          onHesitate={() => {
+            addObjection("price");
+            addSalesStep(resolveObjection("price"));
+            addSignal("yellow");
+          }}
+          onReject={() => {
+            addCoachingPrompt({
+              id: `p-${Date.now()}`,
+              timestamp: Date.now(),
+              phase: "closing",
+              signal: "red",
+              audioCue:
+                "Slow down. Acknowledge the no, then reopen with a low-risk next step—prove value before asking for commitment.",
+              nextMove:
+                "Ask what they'd need to see in the next 7 days to reconsider. Offer a narrow pilot that removes risk.",
+              buySignal: undefined,
+            });
+          }}
+        />
+      </div>
     </div>
   );
 
-  // ── Private pane (rep-only coaching) ────────────────────────────────────
+  // ── Private pane (rep-only) — visually secondary ────────────────────────
   const privatePane = (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          Rep Coaching
+    <div className="space-y-3 text-[13px] leading-snug text-muted">
+      <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted/80">
+          For you · not shown on main screen
         </p>
         {started && (
-          <span className="flex items-center gap-1.5 text-xs text-signal-green">
-            <span className="h-1.5 w-1.5 rounded-full bg-signal-green animate-pulse-slow" />
+          <span className="flex items-center gap-1 text-[10px] text-signal-green/90">
+            <span className="h-1 w-1 rounded-full bg-signal-green" />
             Live
           </span>
         )}
       </div>
 
+      {intel && (
+        <div className="rounded-lg border border-border/50 bg-surface/50 p-3">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted/90">
+            Pre-call angle
+          </p>
+          <p className="text-xs leading-relaxed text-foreground/85">
+            &ldquo;{intel.recommendedAngle}&rdquo;
+          </p>
+        </div>
+      )}
+
       {activePrompt && sig ? (
-        <div className={cn("rounded-xl border p-4 space-y-3 animate-slide-up", sig.border)}>
+        <div className={cn("rounded-lg border p-3 space-y-2 animate-slide-up", sig.border)}>
           <div className="flex items-center gap-2">
             <span className={cn("h-2 w-2 rounded-full", sig.dot)} />
             <span className={cn("text-xs font-semibold uppercase tracking-wider", sig.text)}>
@@ -192,31 +216,32 @@ export default function DemoPage({
           )}
 
           <div>
-            <p className="text-xs text-muted mb-1">Say this now</p>
-            <p className="text-sm font-medium leading-relaxed">
+            <p className="text-[10px] text-muted/90 mb-0.5">Say this now</p>
+            <p className="text-xs font-medium leading-relaxed text-foreground/90">
               &ldquo;{activePrompt.audioCue}&rdquo;
             </p>
           </div>
 
           <div>
-            <p className="text-xs text-muted mb-1">Next move</p>
-            <p className="text-sm leading-relaxed">{activePrompt.nextMove}</p>
+            <p className="text-[10px] text-muted/90 mb-0.5">Next move</p>
+            <p className="text-xs leading-relaxed text-foreground/85">{activePrompt.nextMove}</p>
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-surface p-4 text-center">
-          <p className="text-sm text-muted">
+        <div className="rounded-lg border border-dashed border-border/60 bg-surface/30 p-3 text-center">
+          <p className="text-xs text-muted/90">
             {started
               ? "Request coaching when you need it."
-              : "Start the demo clock to activate coaching."}
+              : "Start the session to activate coaching."}
           </p>
         </div>
       )}
 
       <button
+        type="button"
         onClick={handleGetCoaching}
         disabled={loadingCoach || !started}
-        className="w-full rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-40"
+        className="w-full rounded-lg border border-accent/25 bg-accent/5 px-3 py-2.5 text-xs font-semibold text-accent/90 transition hover:bg-accent/10 disabled:opacity-40"
       >
         {loadingCoach ? (
           <span className="flex items-center justify-center gap-2">
@@ -244,8 +269,23 @@ export default function DemoPage({
 
       {error && <p className="text-xs text-signal-red">{error}</p>}
 
+      <button
+        type="button"
+        onClick={() => setProceedToPricingSignal((n) => n + 1)}
+        disabled={!started}
+        className="w-full rounded-lg border border-border/60 bg-card/40 px-3 py-2 text-xs font-medium text-muted transition hover:border-accent/30 hover:text-foreground disabled:opacity-40"
+      >
+        Jump to pricing →
+      </button>
+
+      <UploadSalesMaterial
+        onIngest={(summary) => {
+          applyPresentationMaterial(summary);
+        }}
+      />
+
       <div>
-        <p className="mb-1.5 text-xs font-medium text-muted uppercase tracking-wider">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted/80">
           Notes
         </p>
         <textarea
@@ -253,20 +293,21 @@ export default function DemoPage({
           onChange={(e) => setRepNotes(e.target.value)}
           rows={3}
           placeholder="Prospect reactions, objections, questions…"
-          className="w-full resize-none rounded-xl border border-border bg-surface px-3 py-2.5 text-xs text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition"
+          className="w-full resize-none rounded-lg border border-border/60 bg-surface/50 px-2.5 py-2 text-[11px] text-foreground placeholder:text-muted/70 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/15 transition"
         />
       </div>
 
       {session && session.coachingPrompts.length > 0 && (
-        <p className="text-xs text-muted text-center">
+        <p className="text-[10px] text-muted/80 text-center">
           {session.coachingPrompts.length} prompt
           {session.coachingPrompts.length > 1 ? "s" : ""} used this session
         </p>
       )}
 
       <button
+        type="button"
         onClick={handleEndSession}
-        className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted transition hover:border-signal-red/40 hover:text-signal-red"
+        className="w-full rounded-lg border border-border/60 px-3 py-2 text-xs font-medium text-muted transition hover:border-signal-red/35 hover:text-signal-red"
       >
         End Session → Debrief
       </button>
@@ -275,7 +316,7 @@ export default function DemoPage({
 
   return (
     <SessionShell>
-      <PublicPrivateSplit publicPane={publicPane} privatePane={privatePane} />
+      <PublicPrivateSplit surface="continuous" publicPane={publicPane} privatePane={privatePane} />
     </SessionShell>
   );
 }
