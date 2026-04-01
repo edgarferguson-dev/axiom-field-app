@@ -38,18 +38,16 @@ export default function DemoPage({
   params: { sessionId: string };
 }) {
   const router = useRouter();
-  const {
-    session,
-    addCoachingPrompt,
-    setRepNotes,
-    setPhase,
-    markStarted,
-    markCompleted,
-    applyPresentationMaterial,
-    addSignal,
-    addObjection,
-    addSalesStep,
-  } = useSessionStore();
+  const session = useSessionStore((s) => s.session);
+  const addCoachingPrompt = useSessionStore((s) => s.addCoachingPrompt);
+  const setRepNotes = useSessionStore((s) => s.setRepNotes);
+  const setPhase = useSessionStore((s) => s.setPhase);
+  const markStarted = useSessionStore((s) => s.markStarted);
+  const markCompleted = useSessionStore((s) => s.markCompleted);
+  const applyPresentationMaterial = useSessionStore((s) => s.applyPresentationMaterial);
+  const addSignal = useSessionStore((s) => s.addSignal);
+  const addObjection = useSessionStore((s) => s.addObjection);
+  const addSalesStep = useSessionStore((s) => s.addSalesStep);
 
   useEffect(() => {
     if (!session) return;
@@ -112,6 +110,40 @@ export default function DemoPage({
   const sig = activePrompt ? SIGNAL_CONFIG[activePrompt.signal] : null;
   const business = session?.business;
   const intel = session?.preCallIntel;
+
+  if (!session) {
+    return (
+      <SessionShell>
+        <div className="space-y-3 text-sm text-muted">
+          <p>No active session found.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Return home to start a session
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
+
+  if (session.id !== params.sessionId) {
+    return (
+      <SessionShell>
+        <div className="space-y-3 text-sm text-muted">
+          <p>This URL does not match the loaded session.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Go home
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
 
   // ── Public pane (buyer-facing) ──────────────────────────────────────────
   const publicPane = (
@@ -289,7 +321,7 @@ export default function DemoPage({
           Notes
         </p>
         <textarea
-          value={session?.repNotes ?? ""}
+          value={session.repNotes ?? ""}
           onChange={(e) => setRepNotes(e.target.value)}
           rows={3}
           placeholder="Prospect reactions, objections, questions…"

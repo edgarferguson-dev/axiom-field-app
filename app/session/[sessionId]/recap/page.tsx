@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { SessionShell } from "@/components/layout/session-shell";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
@@ -92,12 +92,18 @@ function ScoreBar({
 
 export default function RecapPage() {
   const router = useRouter();
-  const { session, setScore, clearSession, setPhase } = useSessionStore();
+  const params = useParams();
+  const sessionId =
+    typeof params?.sessionId === "string" ? params.sessionId : undefined;
+  const session = useSessionStore((s) => s.session);
+  const setScore = useSessionStore((s) => s.setScore);
+  const clearSession = useSessionStore((s) => s.clearSession);
+  const setPhase = useSessionStore((s) => s.setPhase);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localScore, setLocalScore] = useState<PerformanceScore | null>(
-    session?.score ?? null
+    () => session?.score ?? null
   );
 
   useEffect(() => {
@@ -106,9 +112,14 @@ export default function RecapPage() {
   }, [session, setPhase]);
 
   useEffect(() => {
-    if (!session || localScore) return;
+    if (!session?.id || localScore) return;
+
+    let cancelled = false;
 
     async function fetchScore() {
+      const payload = useSessionStore.getState().session;
+      if (!payload) return;
+
       setLoading(true);
       setError(null);
 
@@ -116,30 +127,67 @@ export default function RecapPage() {
         const res = await fetch("/api/score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(session),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) throw new Error("API error");
 
         const data = (await res.json()) as PerformanceScore;
+        if (cancelled) return;
         setScore(data);
         setLocalScore(data);
       } catch {
-        setError("Unable to generate score. Check your API key.");
+        if (!cancelled) setError("Unable to generate score. Check your API key.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchScore();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.id, localScore, setScore]);
 
   const durationMs =
     session?.completedAt && session?.startedAt
       ? session.completedAt - session.startedAt
       : 0;
   const durationMin = Math.round(durationMs / 60000);
+
+  if (!session) {
+    return (
+      <SessionShell>
+        <div className="mx-auto max-w-2xl space-y-3 text-sm text-muted">
+          <p>No active session found.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Return home to start a session
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
+
+  if (sessionId && session.id !== sessionId) {
+    return (
+      <SessionShell>
+        <div className="mx-auto max-w-2xl space-y-3 text-sm text-muted">
+          <p>This URL does not match the loaded session.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Go home
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
 
   return (
     <SessionShell>
@@ -152,12 +200,10 @@ export default function RecapPage() {
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">
             Session Complete
           </h2>
-          {session && (
-            <p className="mt-1 text-sm text-muted">
-              {session.repName} · {session.business?.name ?? "Unknown business"}
-              {durationMin > 0 && ` · ${durationMin} min`}
-            </p>
-          )}
+          <p className="mt-1 text-sm text-muted">
+            {session.repName} · {session.business?.name ?? "Unknown business"}
+            {durationMin > 0 && ` · ${durationMin} min`}
+          </p>
         </div>
 
         {/* Loading state */}

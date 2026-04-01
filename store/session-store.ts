@@ -170,7 +170,7 @@ export const useSessionStore = create<SessionStore>()(
       ensurePresentationSlides: () =>
         set((s) => {
           if (!s.session?.business) return s;
-          const prev = s.session.presentation;
+          const prev = s.session.presentation ?? createEmptyPresentation();
           if (prev.generatedSlides.length > 0) return s;
           const strategy = buildStrategyPackage(
             s.session.business,
@@ -236,7 +236,7 @@ export const useSessionStore = create<SessionStore>()(
       setPresentationPricingResponse: (pricingResponse) =>
         set((s) => {
           if (!s.session) return s;
-          const pres = s.session.presentation;
+          const pres = s.session.presentation ?? createEmptyPresentation();
           return {
             session: {
               ...s.session,
@@ -252,7 +252,7 @@ export const useSessionStore = create<SessionStore>()(
       setPresentationOpenAccountStarted: (openAccountStarted) =>
         set((s) => {
           if (!s.session) return s;
-          const pres = s.session.presentation;
+          const pres = s.session.presentation ?? createEmptyPresentation();
           return {
             session: {
               ...s.session,
@@ -264,7 +264,7 @@ export const useSessionStore = create<SessionStore>()(
       dispatchInteractiveProofEvent: (event) =>
         set((s) => {
           if (!s.session) return s;
-          const pres = s.session.presentation;
+          const pres = s.session.presentation ?? createEmptyPresentation();
           const interactiveProof = reduceInteractiveDemo(pres.interactiveProof, event);
           return {
             session: {

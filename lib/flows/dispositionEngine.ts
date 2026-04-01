@@ -1,5 +1,6 @@
 import { Session, getSignalTrend, getObjectionCoverage } from "@/types/session";
 import { DispositionResult } from "@/types/disposition";
+import { createEmptyPresentation } from "@/types/presentation";
 
 export type DispositionContext = NonNullable<DispositionResult["presentation"]>;
 
@@ -19,7 +20,7 @@ function resolveSignalTrend(session: Session): DispositionResult["signalTrend"] 
 }
 
 function dispositionContextFromSession(session: Session): DispositionContext | undefined {
-  const p = session.presentation;
+  const p = session.presentation ?? createEmptyPresentation();
   if (!p.generatedSlides?.length) return undefined;
 
   return {

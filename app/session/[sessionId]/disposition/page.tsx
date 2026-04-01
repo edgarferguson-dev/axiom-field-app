@@ -43,10 +43,44 @@ export default function DispositionPage({
     setPhase("disposition");
   }, [session, setPhase]);
 
-  if (!session || !result || !score) {
+  if (!session) {
     return (
       <SessionShell>
-        <div className="text-sm text-muted">No active session found.</div>
+        <div className="space-y-3 text-sm text-muted">
+          <p>No active session found.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Return home to start a session
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
+
+  if (session.id !== params.sessionId) {
+    return (
+      <SessionShell>
+        <div className="space-y-3 text-sm text-muted">
+          <p>This URL does not match the loaded session.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Go home
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
+
+  if (!result || !score) {
+    return (
+      <SessionShell>
+        <div className="text-sm text-muted">Unable to compute disposition for this session.</div>
       </SessionShell>
     );
   }

@@ -205,6 +205,40 @@ export default function FieldReadPage({
   const risk = intel ? RISK_CONFIG[intel.riskBand] : null;
   const canScan = form.name.trim().length >= 1 && form.type.trim().length >= 1;
 
+  if (!session) {
+    return (
+      <SessionShell>
+        <div className="mx-auto max-w-3xl space-y-3 text-sm text-muted">
+          <p>No active session found.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Return home to start a session
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
+
+  if (session.id !== params.sessionId) {
+    return (
+      <SessionShell>
+        <div className="mx-auto max-w-3xl space-y-3 text-sm text-muted">
+          <p>This URL does not match the loaded session.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="text-accent underline underline-offset-2"
+          >
+            Go home
+          </button>
+        </div>
+      </SessionShell>
+    );
+  }
+
   return (
     <SessionShell>
       <div className="mx-auto max-w-3xl space-y-6">
