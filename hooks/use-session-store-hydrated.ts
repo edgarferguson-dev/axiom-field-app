@@ -6,27 +6,19 @@ import { useSessionStore } from "@/store/session-store";
 /**
  * True after Zustand persist has rehydrated from storage.
  *
- * Checks synchronously in the useState initializer so that client-side navigation
- * (where hydration completed long before this component mounts) never shows a loading
- * flash. Falls back to the onFinishHydration subscription for the initial full-page-load
- * case where hydration may still be in progress.
+ * Initial state is always `false` on the server and on the client's first paint.
+ * Reading `hasHydrated()` only inside `useEffect` avoids SSR/client HTML mismatch
+ * (otherwise the client can render the loaded shell while the server sent "loading",
+ * which triggers React hydration errors and Next.js "Application error: client-side exception").
  */
 export function useSessionStoreHydrated(): boolean {
-  const [hydrated, setHydrated] = useState<boolean>(() => {
-    // Server: no localStorage, hydration never runs — always false.
-    if (typeof window === "undefined") return false;
-    // Client: if the store already hydrated (common on client-side nav), return true now.
-    return useSessionStore.persist.hasHydrated();
-  });
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    // Re-check after mount in case hydration completed between the initial render
-    // and this effect (race window on first full-page load).
     if (useSessionStore.persist.hasHydrated()) {
       setHydrated(true);
       return;
     }
-    // Still hydrating — subscribe and wait.
     return useSessionStore.persist.onFinishHydration(() => setHydrated(true));
   }, []);
 
