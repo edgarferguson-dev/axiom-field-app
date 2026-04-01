@@ -18,6 +18,7 @@ import {
   generatePresentationSlides,
 } from "@/lib/flows/presentationEngine";
 import {
+  createInitialInteractiveDemoState,
   reduceInteractiveDemo,
   type InteractiveDemoEvent,
 } from "@/lib/flows/interactiveDemoEngine";
@@ -280,12 +281,24 @@ export const useSessionStore = create<SessionStore>()(
       migrate: (persisted: unknown, _version: number) => {
         const state = persisted as { session?: Session | null };
         if (state?.session) {
+          // Patch missing presentation entirely
           if (state.session.presentation == null) {
             state.session.presentation = createEmptyPresentation();
           } else {
             const p = state.session.presentation as Record<string, unknown>;
+            // Patch missing pricingAccepted flag
             if (p.pricingAccepted === undefined) p.pricingAccepted = false;
+            // Patch missing interactiveProof (added after initial release)
+            if (p.interactiveProof == null) {
+              p.interactiveProof = createInitialInteractiveDemoState();
+            }
           }
+          // Patch missing array fields from older session formats
+          const s = state.session as Record<string, unknown>;
+          if (!Array.isArray(s.coachingPrompts)) s.coachingPrompts = [];
+          if (!Array.isArray(s.signals)) s.signals = [];
+          if (!Array.isArray(s.objections)) s.objections = [];
+          if (!Array.isArray(s.salesSteps)) s.salesSteps = [];
         }
         return persisted;
       },

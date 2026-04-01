@@ -5,8 +5,8 @@ import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
 
 export function LiveCoachingOverlay() {
-  const latest = useSessionStore((s) => s.session?.coachingPrompts.at(-1));
-  const promptCount = useSessionStore((s) => s.session?.coachingPrompts.length ?? 0);
+  const latest = useSessionStore((s) => s.session?.coachingPrompts?.at(-1));
+  const promptCount = useSessionStore((s) => s.session?.coachingPrompts?.length ?? 0);
   const [dismissedId, setDismissedId] = useState<string | null>(null);
 
   useEffect(() => {

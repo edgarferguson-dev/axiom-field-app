@@ -33,7 +33,7 @@ export function getSessionFlowStep(
       presentation.pricingResponse === "reject"
     )
       return 4;
-    if (presentation.interactiveProof.step === "confirmed") return 3;
+    if (presentation.interactiveProof?.step === "confirmed") return 3;
     return 2;
   }
   return 1;
