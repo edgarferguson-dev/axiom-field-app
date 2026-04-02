@@ -12,6 +12,7 @@ import type {
   Signal,
   BusinessConstraint,
   CloseOutcome,
+  FieldSnapshotKey,
 } from "@/types/session";
 import { createEmptyPresentation } from "@/types/presentation";
 import type { MaterialSummary } from "@/lib/flows/materialEngine";
@@ -33,7 +34,8 @@ type SessionStore = {
   initSession: (id: string, repName: string) => void;
   setPhase: (phase: SessionPhase) => void;
   setBusiness: (business: BusinessProfile) => void;
-  setPreCallIntel: (intel: PreCallIntel) => void;
+  setPreCallIntel: (intel: PreCallIntel | null) => void;
+  setFieldSnapshot: (keys: FieldSnapshotKey[]) => void;
   setConstraints: (constraints: BusinessConstraint[]) => void;
   setCloseOutcome: (outcome: CloseOutcome) => void;
   addCoachingPrompt: (prompt: CoachingPrompt) => void;
@@ -72,6 +74,7 @@ function makeEmptySession(
     phase,
     business: null,
     preCallIntel: null,
+    fieldSnapshot: [],
     constraints: [],
     closeOutcome: null,
     coachingPrompts: [],
@@ -112,6 +115,9 @@ export const useSessionStore = create<SessionStore>()(
 
       setPreCallIntel: (preCallIntel) =>
         set((s) => (s.session ? { session: { ...s.session, preCallIntel } } : s)),
+
+      setFieldSnapshot: (fieldSnapshot) =>
+        set((s) => (s.session ? { session: { ...s.session, fieldSnapshot } } : s)),
 
       setConstraints: (constraints) =>
         set((s) => (s.session ? { session: { ...s.session, constraints } } : s)),
@@ -260,7 +266,7 @@ export const useSessionStore = create<SessionStore>()(
     }),
     {
       name: "axiom-session",
-      version: 4,
+      version: 5,
       migrate: (persisted: unknown, _version: number) => {
         const state = persisted as { session?: Session | null };
         if (state?.session) {
@@ -284,6 +290,8 @@ export const useSessionStore = create<SessionStore>()(
           // Patch V3→V4 additions
           if (!Array.isArray(s.constraints)) s.constraints = [];
           if (s.closeOutcome === undefined) s.closeOutcome = null;
+          // V5: field snapshot on session (replaces door-observation textarea)
+          if (!Array.isArray(s.fieldSnapshot)) s.fieldSnapshot = [];
         }
         return persisted;
       },

@@ -17,7 +17,9 @@ const STEPS = [
 export function getSessionFlowStep(
   pathname: string,
   _presentation: SessionPresentationState | null | undefined,
-  phase?: SessionPhase | null
+  phase?: SessionPhase | null,
+  /** When scout step already has generated intel (constraints captured there too). */
+  preCallIntelReady?: boolean
 ): number {
   if (pathname.includes("/recap") || phase === "recap") return 5;
   if (pathname.includes("/disposition") || phase === "disposition") return 5;
@@ -25,24 +27,31 @@ export function getSessionFlowStep(
   if (pathname.includes("/offer-fit") || phase === "offer-fit") return 4;
   if (pathname.includes("/demo") || phase === "live-demo") return 3;
   if (pathname.includes("/constraints") || phase === "constraints") return 2;
-  if (pathname.includes("/field-read") || phase === "field-read") return 1;
+  if (pathname.includes("/field-read") || phase === "field-read") {
+    return preCallIntelReady ? 2 : 1;
+  }
   return 1;
 }
 
 type SessionFlowProgressProps = {
   presentation: SessionPresentationState;
   phase?: SessionPhase | null;
+  preCallIntelReady?: boolean;
 };
 
-export function SessionFlowProgress({ presentation, phase }: SessionFlowProgressProps) {
+export function SessionFlowProgress({
+  presentation,
+  phase,
+  preCallIntelReady,
+}: SessionFlowProgressProps) {
   const pathname = usePathname();
   const current = useMemo(
-    () => getSessionFlowStep(pathname, presentation, phase),
-    [pathname, presentation, phase]
+    () => getSessionFlowStep(pathname, presentation, phase, preCallIntelReady),
+    [pathname, presentation, phase, preCallIntelReady]
   );
 
   return (
-    <div className="border-b border-border bg-surface/80 backdrop-blur-sm">
+    <div className="border-b border-border bg-surface/95 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-y-2 px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto sm:gap-2">
           {STEPS.map((step, index) => {

@@ -66,6 +66,9 @@ export type StrategyPackage = {
 };
 
 function normalizeConstraints(business: BusinessProfile, intel?: PreCallIntel | null): string[] {
+  const fromCaptured =
+    business.capturedConstraintLabels?.filter(Boolean).slice(0, 12) ?? [];
+
   const fromNotes = business.notes
     ? business.notes
         .split(/[,;\n]/g)
@@ -83,8 +86,8 @@ function normalizeConstraints(business: BusinessProfile, intel?: PreCallIntel | 
       ]
     : [];
 
-  const combined = [...fromNotes, ...fromIntel];
-  return Array.from(new Set(combined)).slice(0, 6);
+  const combined = [...fromCaptured, ...fromNotes, ...fromIntel];
+  return Array.from(new Set(combined)).slice(0, 8);
 }
 
 export function buildStrategyPackage(
@@ -110,7 +113,7 @@ export function buildStrategyPackage(
       : [
           "Instant response so you win the first window",
           "After-hours coverage without extra headcount",
-          "Rep guidance when objections appear",
+          "Structured prompts when objections surface",
         ];
 
   const proofPoints =
@@ -119,7 +122,7 @@ export function buildStrategyPackage(
       : [
           "Respond in minutes, not hours",
           "Catch after-hours inquiries automatically",
-          "Track signals and objections so the rep stays in control",
+          "Keep the conversation on-rails when the room gets noisy",
         ];
 
   const roiFrame =
@@ -165,7 +168,7 @@ export function generatePresentationSlides(
       name: "Growth",
       price: "$599/mo",
       subtitle: "Most teams land here",
-      highlights: ["Everything in Starter", "Live coaching overlays", "Performance scoring + recap"],
+      highlights: ["Everything in Starter", "Guided selling overlays", "Performance scoring + recap"],
       recommended: true,
     },
     {
@@ -177,22 +180,23 @@ export function generatePresentationSlides(
     },
   ];
 
+  // Intentional sequence: context → problem → mechanism → proof → outcome → live demo → offer → commit
   return [
     {
       id: `${idPrefix}-snapshot`,
       type: "business-snapshot",
-      kicker: "Buyer Presentation",
+      kicker: "Opening",
       title: strategy.productName
         ? `${strategy.productName} for ${strategy.targetCustomer ?? strategy.businessType}`
-        : `Business snapshot: ${strategy.businessType}`,
-      subtitle: `Lead source: ${strategy.leadSource} · ${business.name}`,
-      callout: constraintsLine ? { label: "Context", value: constraintsLine } : undefined,
+        : `How we’ll present ${strategy.businessType}`,
+      subtitle: `${business.name} · Lead source: ${strategy.leadSource}`,
+      callout: constraintsLine ? { label: "Scout context", value: constraintsLine } : undefined,
     },
     {
       id: `${idPrefix}-pain`,
       type: "pain",
-      kicker: "The problem",
-      title: "The window you lose is invisible",
+      kicker: "Problem",
+      title: "The cost isn’t a bad month — it’s the leads that never get a real first response",
       subtitle: strategy.painFrame,
       bullets: intel?.keyOpportunities?.length
         ? intel.keyOpportunities.slice(0, 4)
@@ -202,41 +206,41 @@ export function generatePresentationSlides(
         : undefined,
     },
     {
-      id: `${idPrefix}-roi`,
-      type: "cost-roi",
-      kicker: "Cost / ROI",
-      title: "Small response-time gains compound fast",
-      subtitle: strategy.roiFrame,
-      bullets: ["Fewer uncontacted leads", "Higher show rates from faster follow-up", "Cleaner closes under pressure"],
-    },
-    {
       id: `${idPrefix}-proof`,
       type: "solution",
-      kicker: "The solution",
-      title: "A sales execution layer that runs the moment a lead arrives",
-      subtitle: "Front stage: premium presentation. Back stage: tactical coaching—quietly.",
+      kicker: "Mechanism",
+      title: "A structured execution layer the moment a lead arrives",
+      subtitle: "One buyer-facing story, consistent pacing, and clear next steps — without turning the call into a generic app tour.",
       bullets: strategy.coreBenefits.slice(0, 4),
     },
     {
       id: `${idPrefix}-proof-points`,
       type: "proof",
       kicker: "Proof",
-      title: "Built around conversion moments",
-      subtitle: "Not a dashboard. A selling surface that stays on-rails.",
+      title: "Designed around conversion moments — not vanity metrics",
+      subtitle: "What you’re seeing is a selling surface that stays on-rails when it matters.",
       bullets: strategy.proofPoints.slice(0, 5),
+    },
+    {
+      id: `${idPrefix}-roi`,
+      type: "cost-roi",
+      kicker: "Outcome",
+      title: "Small response-time gains compound fast",
+      subtitle: strategy.roiFrame,
+      bullets: ["Fewer uncontacted leads", "Higher show rates from faster follow-up", "Cleaner momentum into the decision"],
     },
     {
       id: `${idPrefix}-interactive`,
       type: "interactive-proof",
-      kicker: "Interactive proof",
-      title: "Show it working in 60 seconds",
-      subtitle: "A believable front-end simulation (no real SMS yet).",
+      kicker: "See it live",
+      title: "Show the workflow in under a minute",
+      subtitle: "A believable front-end simulation (no real SMS in this demo).",
       prompt: "Enter a phone number to simulate outreach → scheduling → booking confirmation.",
     },
     {
       id: `${idPrefix}-pricing`,
       type: "pricing",
-      kicker: "Pricing",
+      kicker: "Offer",
       title: "Pick a tier to start lean",
       subtitle: "Start small, prove it works, then scale coverage.",
       tiers,
@@ -245,9 +249,9 @@ export function generatePresentationSlides(
     {
       id: `${idPrefix}-close`,
       type: "close-open-account",
-      kicker: "Open account",
+      kicker: "Commit",
       title: "Open the account and hand off onboarding",
-      subtitle: "Lock the next step while momentum is present.",
+      subtitle: "When you are ready to move forward, lock the next step while momentum is here.",
       ctaLabel: strategy.onboardingCta ?? "Open Account →",
       bullets: [
         "Pick a start date",

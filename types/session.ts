@@ -26,6 +26,18 @@ export type ObjectionType =
   | "not-interested"
   | "timing";
 
+// ── Field snapshot (on-site context) ─────────────────────────────────────────
+
+export type FieldSnapshotKey =
+  | "busy"
+  | "moderate-traffic"
+  | "empty"
+  | "no-receptionist"
+  | "owner-present"
+  | "staff-only"
+  | "active-lobby"
+  | "quiet-storefront";
+
 // ── Constraints ────────────────────────────────────────────────────────────
 
 export type ConstraintKey =
@@ -81,17 +93,43 @@ export type BusinessProfile = {
   type: string;
   currentSystem: string;
   leadSource: string;
-  notes: string;
+  /** @deprecated Legacy freeform; structured capture replaces “door observations.” */
+  notes?: string;
+  /** Human-readable labels from Field Snapshot + constraint chips (AI + strategy). */
+  capturedConstraintLabels?: string[];
+  /** Rep-entered lookup hints (optional; future enrichment / APIs). */
+  website?: string;
+  rating?: string;
+  reviewCount?: string;
+  address?: string;
+  social?: string;
+  ownerName?: string;
+  contactPhone?: string;
 };
 
 // ── AI output shapes ───────────────────────────────────────────────────────
+
+/** When to surface tablet / visual demo in the visit */
+export type TabletGuidance = "now" | "later" | "either";
+
+/** Recommended engagement mode for first contact */
+export type ChannelMode = "phone-first" | "verbal-first" | "tablet-first";
 
 export type PreCallIntel = {
   painPattern: string;
   riskBand: RiskBand;
   missedValueEstimate: string;
   keyOpportunities: string[];
+  /** Suggested opener line */
   recommendedAngle: string;
+  /** Objection to prep for early */
+  likelyObjection: string;
+  /** When and how to advance (e.g. first 90s, after rapport) */
+  approachTiming: string;
+  /** Tablet now vs hold for conversation */
+  tabletGuidance: TabletGuidance;
+  /** Phone vs in-person verbal vs tablet-led */
+  channelMode: ChannelMode;
 };
 
 export type CoachingPrompt = {
@@ -134,6 +172,8 @@ export type Session = {
   phase: SessionPhase;
   business: BusinessProfile | null;
   preCallIntel: PreCallIntel | null;
+  /** On-site context captured on scout (first session page). */
+  fieldSnapshot: FieldSnapshotKey[];
   constraints: BusinessConstraint[];
   closeOutcome: CloseOutcome | null;
   coachingPrompts: CoachingPrompt[];

@@ -44,7 +44,11 @@ export default function SessionLayout({
   return (
     <AppShell>
       <Topbar title="Axiom Field" subtitle={subtitle} />
-      <SessionFlowProgress presentation={presentation} phase={session.phase} />
+      <SessionFlowProgress
+        presentation={presentation}
+        phase={session.phase}
+        preCallIntelReady={!!session.preCallIntel}
+      />
       {children}
       <LiveCoachingOverlay />
     </AppShell>

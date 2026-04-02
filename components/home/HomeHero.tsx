@@ -19,13 +19,13 @@ export function HomeHero({
   onExplorePlatform,
 }: HomeHeroProps) {
   return (
-    <section className="relative overflow-hidden border-b border-border/80 bg-gradient-to-b from-surface/40 to-background px-4 pb-16 pt-10 md:pb-20 md:pt-14">
+    <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface to-background px-4 pb-16 pt-10 md:pb-20 md:pt-14">
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        className="pointer-events-none absolute inset-0 opacity-50"
         aria-hidden
       >
-        <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
-        <div className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-accent/15 blur-3xl" />
+        <div className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-sky-400/10 blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-5xl">

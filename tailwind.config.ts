@@ -22,9 +22,9 @@ const config: Config = {
         "signal-red": "var(--signal-red)",
       },
       boxShadow: {
-        soft: "0 2px 16px 0 rgba(0,0,0,0.4)",
-        glow: "0 0 20px 0 rgba(59,130,246,0.15)",
-        "glow-green": "0 0 16px 0 rgba(34,197,94,0.2)",
+        soft: "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 8px 24px -4px rgb(15 23 42 / 0.08)",
+        glow: "0 0 24px 0 rgba(37, 99, 235, 0.18)",
+        "glow-green": "0 0 16px 0 rgba(22, 163, 74, 0.2)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],

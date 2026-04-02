@@ -25,8 +25,11 @@ export async function generatePerformanceScore(
 Rep: ${session.repName}
 Business: ${session.business?.name ?? "Unknown"} (${session.business?.type ?? "Unknown"})
 Session Duration: ${durationMin} minutes
-Coaching Prompts Used: ${session.coachingPrompts.length}
+Coaching Prompts Used: ${session.coachingPrompts?.length ?? 0}
 Rep's Notes: ${session.repNotes || "No notes taken"}
+Scout diagnosis (labels): ${session.business?.capturedConstraintLabels?.join("; ") || "None captured"}
+Field snapshot keys: ${session.fieldSnapshot?.length ? session.fieldSnapshot.join(", ") : "None"}
+Operational constraints: ${session.constraints?.map((c) => `${c.key}:${c.severity}`).join("; ") || "None"}
 Pre-Call Intel Was Generated: ${session.preCallIntel ? "Yes" : "No"}
 Coaching Signal History: ${session.coachingPrompts.map((p) => p.signal).join(", ") || "None"}
 

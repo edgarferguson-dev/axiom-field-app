@@ -49,7 +49,7 @@ export function Topbar({
   const showSignalTrend = trend.length > 0 && !onDemoRoute;
 
   return (
-    <header className="border-b border-border bg-card/80 backdrop-blur">
+    <header className="border-b border-border bg-surface/95 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         <div className="space-y-1">
           <div className="text-lg font-semibold tracking-tight">{title}</div>

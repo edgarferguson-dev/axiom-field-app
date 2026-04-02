@@ -1,6 +1,11 @@
+import { AppShellV2 } from "@/components/layout/AppShellV2";
 import { HomePageClient } from "@/components/home/HomePageClient";
 
-/** Server entry for `/` — client UI lives in `HomePageClient` (hooks, store, router). */
+/** Server entry for `/` — shell + client UI (hooks, store, router). */
 export default function HomePage() {
-  return <HomePageClient />;
+  return (
+    <AppShellV2>
+      <HomePageClient />
+    </AppShellV2>
+  );
 }

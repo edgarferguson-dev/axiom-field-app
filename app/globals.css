@@ -2,18 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Trust-forward product palette: white surfaces, navy type, confident blue accent */
 :root {
-  --background: #07090E;
-  --surface: #0D1117;
-  --card: #111827;
-  --border: #1F2A3A;
-  --foreground: #F1F5F9;
-  --muted: #64748B;
-  --accent: #3B82F6;
-  --accent-dim: rgba(59, 130, 246, 0.15);
-  --signal-green: #22C55E;
-  --signal-yellow: #EAB308;
-  --signal-red: #EF4444;
+  --background: #f1f5f9;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --accent: #2563eb;
+  --accent-dim: rgba(37, 99, 235, 0.1);
+  --signal-green: #16a34a;
+  --signal-yellow: #ca8a04;
+  --signal-red: #dc2626;
 }
 
 * {
@@ -32,25 +33,23 @@ body {
   min-height: 100vh;
 }
 
-/* Premium scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--surface);
+  background: var(--border);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: #cbd5e1;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted);
+  background: #94a3b8;
 }
 
-/* Selection */
 ::selection {
-  background: rgba(59, 130, 246, 0.25);
+  background: rgba(37, 99, 235, 0.2);
   color: var(--foreground);
 }
 
@@ -59,12 +58,12 @@ body {
     text-wrap: balance;
   }
   .gradient-text {
-    background: linear-gradient(135deg, #F1F5F9 0%, #94A3B8 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .gradient-accent {
-    background: linear-gradient(135deg, #3B82F6 0%, #6366F1 100%);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   }
 }

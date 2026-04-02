@@ -27,6 +27,7 @@ export async function generateCoachingPrompt(
 Business: ${ctx.business.name} (${ctx.business.type})
 Pre-Call Pain: ${ctx.preCallIntel.painPattern}
 Recommended Angle: ${ctx.preCallIntel.recommendedAngle}
+Constraints / diagnosis (from scout): ${ctx.business.capturedConstraintLabels?.join("; ") || "Not specified"}
 Rep's Notes So Far: ${ctx.repNotes || "None yet"}
 Coaching Prompts Given: ${ctx.previousPromptCount}
 

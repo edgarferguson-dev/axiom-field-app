@@ -2,8 +2,6 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AppShell } from "@/components/layout/app-shell";
-import { Topbar } from "@/components/layout/topbar";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SystemOverview } from "@/components/home/SystemOverview";
 import { useSessionStore } from "@/store/session-store";
@@ -32,19 +30,15 @@ export function HomePageClient() {
   }, []);
 
   return (
-    <AppShell>
-      <Topbar title="Axiom Field" subtitle="Sales Execution Platform" status="Ready" />
-
-      <main className="min-h-[calc(100vh-73px)]">
-        <HomeHero
-          repName={repName}
-          onRepNameChange={setRepName}
-          onStartSession={handleStart}
-          loading={loading}
-          onExplorePlatform={handleExplorePlatform}
-        />
-        <SystemOverview />
-      </main>
-    </AppShell>
+    <main className="min-h-0">
+      <HomeHero
+        repName={repName}
+        onRepNameChange={setRepName}
+        onStartSession={handleStart}
+        loading={loading}
+        onExplorePlatform={handleExplorePlatform}
+      />
+      <SystemOverview />
+    </main>
   );
 }
