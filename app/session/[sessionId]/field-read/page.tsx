@@ -22,6 +22,7 @@ import { SCOUT_BUSINESS_TYPES } from "@/lib/field/scoutOptions";
 import { constraintsFromMap, emptyScoutProfile } from "@/lib/field/scoutForm";
 import { normalizePreCallIntel } from "@/lib/pre-call/normalizer";
 import type { PreCallSource } from "@/types/pre-call";
+import { VisitMemoryPanel } from "@/components/field/VisitMemoryPanel";
 
 export default function FieldReadPage({
   params,
@@ -260,6 +261,8 @@ export default function FieldReadPage({
           title="Scout the account, capture constraints, get your brief"
           description="Built for the parking lot and the lobby: lookup hints, field pressure, operational constraints — then a tight AI brief with opener, objection prep, and tablet timing before you walk in."
         />
+
+        <VisitMemoryPanel businessNameHint={form.name} />
 
         {!intel && (
           <ScoutIntakeSection

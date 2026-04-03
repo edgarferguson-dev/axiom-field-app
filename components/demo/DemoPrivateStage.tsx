@@ -9,6 +9,7 @@ import { ProofPrivatePanel } from "@/components/proof/ProofPrivatePanel";
 import { CloseRecommendationPanel } from "@/components/close/CloseRecommendationPanel";
 import { MerchantProofCoachRail } from "@/components/demo/MerchantProofCoachRail";
 import { PostRunCapturePanel } from "@/components/field/PostRunCapturePanel";
+import { VisitMemoryPanel } from "@/components/field/VisitMemoryPanel";
 import type { BuyerState } from "@/types/demo";
 import type { PresentationSlide } from "@/lib/flows/presentationEngine";
 import { listPresentationPacks } from "@/lib/presentation/packs/registry";
@@ -62,6 +63,7 @@ export function DemoPrivateStage() {
   const setPresentationRunOfferTemplateId = useSessionStore((s) => s.setPresentationRunOfferTemplateId);
   const slides = useSessionStore((s) => s.session?.presentation?.generatedSlides);
   const activeSlideIndex = useSessionStore((s) => s.session?.presentation?.activeSlideIndex ?? 0);
+  const businessName = useSessionStore((s) => s.session?.business?.name ?? "");
 
   const merchantProofBeat = useMemo(() => {
     if (!slides?.length) return null;
@@ -96,6 +98,8 @@ export function DemoPrivateStage() {
       <ProofPrivatePanel />
 
       <CloseRecommendationPanel />
+
+      <VisitMemoryPanel businessNameHint={businessName} compact />
 
       <PostRunCapturePanel />
 
