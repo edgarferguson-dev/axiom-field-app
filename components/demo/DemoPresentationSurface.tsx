@@ -104,8 +104,8 @@ export function DemoPresentationSurface({
             {!dani && (
               <p className="max-w-xl text-base text-muted">
                 {started
-                  ? "Walk the story in order — context, problem, proof, value, then offer."
-                  : "Start when the room is ready. The deck follows a clear arc from scout context into the offer."}
+                  ? "Run the proof in order — question, show, probe, then one clear ask."
+                  : "Start when the room is ready — short questions, strong proof, minimal talking."}
               </p>
             )}
             {business && !dani && (

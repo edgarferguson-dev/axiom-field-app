@@ -15,10 +15,10 @@ export function matchToPrefill(
   );
 
   return {
-    name: match.name,
-    address: match.address,
-    contactPhone: match.phone || undefined,
-    website: match.website || undefined,
+    name: match.name.trim(),
+    address: match.address.trim(),
+    contactPhone: match.phone?.trim() || undefined,
+    website: match.website?.trim() || undefined,
     rating: match.rating != null ? String(match.rating) : undefined,
     reviewCount: match.reviewCount != null ? String(match.reviewCount) : undefined,
     type: typeMatch ?? "",

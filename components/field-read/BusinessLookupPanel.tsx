@@ -6,9 +6,9 @@ import { FormSelect } from "@/components/field-read/FormSelect";
 import {
   searchBusinesses,
   fetchPlaceDetails,
-  matchToPrefill,
   type BusinessLookupMatch,
 } from "@/lib/data/businessLookup";
+import { mergeFormWithDirectoryMatch } from "@/lib/field/directoryAutofill";
 
 const EXTRA_FIELDS: {
   key: keyof Pick<
@@ -28,10 +28,15 @@ const EXTRA_FIELDS: {
 type BusinessLookupPanelProps = {
   form: BusinessProfile;
   onChange: (patch: Partial<BusinessProfile>) => void;
+  /**
+   * RFC 6 — Fired after Places search row + optional details fetch.
+   * Passes the full merged profile (directory + existing form fields). Pre-call AI uses this context after any rep edits.
+   */
+  onDirectoryApply?: (merged: BusinessProfile) => void;
   businessTypes: string[];
 };
 
-export function BusinessLookupPanel({ form, onChange, businessTypes }: BusinessLookupPanelProps) {
+export function BusinessLookupPanel({ form, onChange, onDirectoryApply, businessTypes }: BusinessLookupPanelProps) {
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<BusinessLookupMatch[]>([]);
   const [enriching, setEnriching] = useState(false);
@@ -54,18 +59,32 @@ export function BusinessLookupPanel({ form, onChange, businessTypes }: BusinessL
     async (m: BusinessLookupMatch) => {
       setEnriching(true);
       try {
-        let merged = m;
+        let enriched: BusinessLookupMatch = m;
         if (m.placeId) {
           const details = await fetchPlaceDetails(m.placeId);
-          if (details) merged = { ...m, ...details, name: details.name || m.name };
+          if (details) enriched = { ...m, ...details, name: details.name || m.name };
         }
-        onChange(matchToPrefill(merged, businessTypes));
+        const merged = mergeFormWithDirectoryMatch(form, enriched, businessTypes);
+        if (onDirectoryApply) {
+          onDirectoryApply(merged);
+        } else {
+          const patch: Partial<BusinessProfile> = {
+            name: merged.name,
+            type: merged.type,
+            address: merged.address,
+            contactPhone: merged.contactPhone,
+            website: merged.website,
+            rating: merged.rating,
+            reviewCount: merged.reviewCount,
+          };
+          onChange(patch);
+        }
         setResults([]);
       } finally {
         setEnriching(false);
       }
     },
-    [businessTypes, onChange]
+    [businessTypes, form, onChange, onDirectoryApply]
   );
 
   return (

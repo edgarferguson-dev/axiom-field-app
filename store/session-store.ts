@@ -21,10 +21,10 @@ import type {
 } from "@/types/session";
 import { createEmptyPresentation } from "@/types/presentation";
 import type { MaterialSummary } from "@/lib/flows/materialEngine";
-import {
-  buildStrategyPackage,
-  generatePresentationSlides,
-} from "@/lib/flows/presentationEngine";
+import { buildStrategyPackage } from "@/lib/flows/presentationEngine";
+import { generateProofLedSlides } from "@/lib/presentation/generateProofLedSlides";
+import type { OpeningMode } from "@/types/presentationPack";
+import { DEFAULT_OPENING_MODE, DEFAULT_PRESENTATION_PACK_ID } from "@/types/presentationPack";
 import {
   createInitialInteractiveDemoState,
   reduceInteractiveDemo,
@@ -35,6 +35,7 @@ import type { Lead } from "@/types/lead";
 import type { BuyerState, CoachingMomentum, DemoViewMode } from "@/types/demo";
 import type { BuyerReaction, ProofAssessment, ProofBrief, ProofEvent, ProofSequence } from "@/types/proof";
 import type { CloseAssessment, CloseEvent, ClosePath, CloseRecommendation } from "@/types/close";
+import type { PreCallSource } from "@/types/pre-call";
 import {
   buildDefaultProofSequence,
   buildProofBrief,
@@ -50,6 +51,51 @@ import {
 } from "@/lib/flows/methodEngine";
 import { isValidMethodId } from "@/types/method";
 import { normalizePreCallIntel } from "@/lib/pre-call/normalizer";
+import { resolveActiveOfferTemplate } from "@/lib/presentation/resolveActiveOfferTemplate";
+import {
+  DEFAULT_OFFER_TEMPLATES,
+  DEFAULT_OFFER_TEMPLATE_ID,
+  type OfferTemplate,
+} from "@/types/offerTemplate";
+import type {
+  PostRunAskTiming,
+  PostRunCapture,
+  PostRunProofStrength,
+  PostRunReuseIntent,
+} from "@/types/postRunCapture";
+import { getPresentationPackDefinition } from "@/lib/presentation/packs/registry";
+import type { SessionPresentationState } from "@/types/presentation";
+import type { PresentationSlide } from "@/lib/flows/presentationEngine";
+
+function regenerateProofSlides(args: {
+  session: Session;
+  offerTemplates: OfferTemplate[];
+  defaultOfferTemplateId: string;
+  presentationPatch?: Partial<SessionPresentationState>;
+}): PresentationSlide[] {
+  const base = args.session.presentation ?? createEmptyPresentation();
+  const pres: SessionPresentationState = { ...base, ...args.presentationPatch };
+  const offer = resolveActiveOfferTemplate({
+    offerTemplates: args.offerTemplates,
+    defaultOfferTemplateId: args.defaultOfferTemplateId,
+    session: { ...args.session, presentation: pres },
+  });
+  const strategy =
+    pres.strategyPackage ??
+    buildStrategyPackage(
+      args.session.business!,
+      args.session.preCallIntel,
+      pres.materialSummary ?? undefined
+    );
+  return generateProofLedSlides(
+    args.session.business!,
+    strategy,
+    args.session.preCallIntel,
+    pres.packId,
+    pres.openingMode,
+    offer
+  );
+}
 
 export type SessionHistoryEntry = {
   id: string;
@@ -73,6 +119,11 @@ type SessionStore = {
   /** Current slide type id for adaptive coaching (set by PresentationEngine). */
   demoSlideType: string | null;
 
+  /** Phase 7D — workspace offer templates (persisted). */
+  offerTemplates: OfferTemplate[];
+  defaultOfferTemplateId: string;
+  postRunCaptures: PostRunCapture[];
+
   setDemoViewMode: (mode: DemoViewMode) => void;
   setBuyerState: (state: BuyerState) => void;
   setCoachingMomentum: (m: CoachingMomentum) => void;
@@ -81,7 +132,9 @@ type SessionStore = {
   initSession: (id: string, repName: string) => void;
   setPhase: (phase: SessionPhase) => void;
   setBusiness: (business: BusinessProfile) => void;
-  setPreCallIntel: (intel: PreCallIntel | null) => void;
+  /** RFC 6 — directory/places autofill marker (not a second business source of truth). */
+  setDirectoryAutofillAt: (at: number | null) => void;
+  setPreCallIntel: (intel: PreCallIntel | null, source?: PreCallSource | null) => void;
   setFieldEngagementDecision: (decision: FieldEngagementDecision | null) => void;
   setCloseState: (state: DemoCloseState | null) => void;
   setCloseCTAs: (primaryCTA: string | null, backupCTA: string | null) => void;
@@ -109,6 +162,16 @@ type SessionStore = {
 
   ensurePresentationSlides: () => void;
   applyPresentationMaterial: (summary: MaterialSummary) => void;
+  /** RFC 7 — switch registry pack (regenerates slides; lightweight ids only). */
+  setPresentationPackId: (packId: string) => void;
+  setPresentationOpeningMode: (mode: OpeningMode) => void;
+  /** Phase 7B — sync buyer slide index for private beat coaching */
+  setPresentationActiveSlideIndex: (index: number) => void;
+  /** Phase 7D — in-room offer for this run; regenerates slides. null = workspace default */
+  setPresentationRunOfferTemplateId: (templateId: string | null) => void;
+  setOfferTemplates: (templates: OfferTemplate[]) => void;
+  setDefaultOfferTemplateId: (id: string) => void;
+  addPostRunCapture: (row: Omit<PostRunCapture, "id" | "capturedAt">) => void;
   setPresentationPricingTierId: (tierId: string | null) => void;
   setPresentationPricingResponse: (
     response: "accept" | "hesitate" | "reject" | null
@@ -156,6 +219,8 @@ function makeEmptySession(
     phase,
     business: null,
     preCallIntel: null,
+    preCallIntelSource: null,
+    directoryAutofillAt: null,
     fieldEngagementDecision: null,
     closeState: null,
     primaryCTA: null,
@@ -229,6 +294,9 @@ export const useSessionStore = create<SessionStore>()(
       buyerState: "unknown",
       coachingMomentum: "flat",
       demoSlideType: null,
+      offerTemplates: DEFAULT_OFFER_TEMPLATES,
+      defaultOfferTemplateId: DEFAULT_OFFER_TEMPLATE_ID,
+      postRunCaptures: [],
 
       setDemoViewMode: (demoViewMode) => set({ demoViewMode }),
       setBuyerState: (buyerState) => set({ buyerState }),
@@ -314,13 +382,24 @@ export const useSessionStore = create<SessionStore>()(
       setBusiness: (business) =>
         set((s) => (s.session ? { session: { ...s.session, business } } : s)),
 
-      setPreCallIntel: (intel) =>
+      setDirectoryAutofillAt: (at) =>
+        set((s) =>
+          s.session ? { session: { ...s.session, directoryAutofillAt: at } } : s
+        ),
+
+      setPreCallIntel: (intel, source) =>
         set((s) => {
           if (!s.session) return s;
           // Always normalize before persisting — guards against stale localStorage
           // data and direct store writes that bypass the AI/fallback pipeline.
           const preCallIntel = intel ? (normalizePreCallIntel(intel) ?? intel) : null;
-          return { session: { ...s.session, preCallIntel } };
+          const preCallIntelSource =
+            preCallIntel == null
+              ? null
+              : source === "ai" || source === "deterministic"
+                ? source
+                : null;
+          return { session: { ...s.session, preCallIntel, preCallIntelSource } };
         }),
 
       setFieldEngagementDecision: (fieldEngagementDecision) =>
@@ -440,16 +519,29 @@ export const useSessionStore = create<SessionStore>()(
             s.session.preCallIntel,
             material
           );
-          const generatedSlides = generatePresentationSlides(
+          const offer = resolveActiveOfferTemplate({
+            offerTemplates: s.offerTemplates,
+            defaultOfferTemplateId: s.defaultOfferTemplateId,
+            session: s.session,
+          });
+          const generatedSlides = generateProofLedSlides(
             s.session.business,
             strategy,
-            s.session.preCallIntel
+            s.session.preCallIntel,
+            prev.packId,
+            prev.openingMode,
+            offer
           );
           return {
             pendingPresentationMaterial: null,
             session: {
               ...s.session,
-              presentation: { ...prev, materialSummary: material ?? prev.materialSummary, strategyPackage: strategy, generatedSlides },
+              presentation: {
+                ...prev,
+                materialSummary: material ?? prev.materialSummary,
+                strategyPackage: strategy,
+                generatedSlides,
+              },
             },
           };
         }),
@@ -459,24 +551,232 @@ export const useSessionStore = create<SessionStore>()(
           if (!s.session?.business) {
             return { ...s, pendingPresentationMaterial: summary };
           }
+          const prevPres = s.session.presentation ?? createEmptyPresentation();
           const strategy = buildStrategyPackage(
             s.session.business,
             s.session.preCallIntel,
             summary
           );
-          const generatedSlides = generatePresentationSlides(
-            s.session.business,
-            strategy,
-            s.session.preCallIntel
-          );
           const empty = createEmptyPresentation();
+          const generatedSlides = regenerateProofSlides({
+            session: {
+              ...s.session,
+              presentation: {
+                ...empty,
+                materialSummary: summary,
+                strategyPackage: strategy,
+                packId: prevPres.packId,
+                openingMode: prevPres.openingMode,
+                runOfferTemplateId: prevPres.runOfferTemplateId ?? null,
+              },
+            },
+            offerTemplates: s.offerTemplates,
+            defaultOfferTemplateId: s.defaultOfferTemplateId,
+          });
           return {
             session: {
               ...s.session,
-              presentation: { ...empty, materialSummary: summary, strategyPackage: strategy, generatedSlides },
+              presentation: {
+                ...empty,
+                materialSummary: summary,
+                strategyPackage: strategy,
+                generatedSlides,
+                packId: prevPres.packId,
+                openingMode: prevPres.openingMode,
+                runOfferTemplateId: prevPres.runOfferTemplateId ?? null,
+                activeSlideIndex: 0,
+              },
             },
             pendingPresentationMaterial: null,
           };
+        }),
+
+      setPresentationPackId: (packId) =>
+        set((s) => {
+          if (!s.session?.business) return s;
+          const prev = s.session.presentation ?? createEmptyPresentation();
+          const strategy =
+            prev.strategyPackage ??
+            buildStrategyPackage(
+              s.session.business,
+              s.session.preCallIntel,
+              prev.materialSummary ?? undefined
+            );
+          const generatedSlides = regenerateProofSlides({
+            session: s.session,
+            offerTemplates: s.offerTemplates,
+            defaultOfferTemplateId: s.defaultOfferTemplateId,
+            presentationPatch: {
+              ...prev,
+              packId,
+              strategyPackage: strategy,
+            },
+          });
+          return {
+            session: {
+              ...s.session,
+              presentation: {
+                ...prev,
+                packId,
+                strategyPackage: strategy,
+                generatedSlides,
+                pricingTierId: null,
+                pricingResponse: null,
+                pricingAccepted: false,
+                activeSlideIndex: 0,
+              },
+            },
+          };
+        }),
+
+      setPresentationOpeningMode: (openingMode) =>
+        set((s) => {
+          if (!s.session?.business) return s;
+          const prev = s.session.presentation ?? createEmptyPresentation();
+          const strategy =
+            prev.strategyPackage ??
+            buildStrategyPackage(
+              s.session.business,
+              s.session.preCallIntel,
+              prev.materialSummary ?? undefined
+            );
+          const generatedSlides = regenerateProofSlides({
+            session: s.session,
+            offerTemplates: s.offerTemplates,
+            defaultOfferTemplateId: s.defaultOfferTemplateId,
+            presentationPatch: {
+              ...prev,
+              openingMode,
+              strategyPackage: strategy,
+            },
+          });
+          return {
+            session: {
+              ...s.session,
+              presentation: {
+                ...prev,
+                openingMode,
+                strategyPackage: strategy,
+                generatedSlides,
+                pricingTierId: null,
+                pricingResponse: null,
+                pricingAccepted: false,
+                activeSlideIndex: 0,
+              },
+            },
+          };
+        }),
+
+      setPresentationActiveSlideIndex: (activeSlideIndex) =>
+        set((s) => {
+          if (!s.session) return s;
+          const pres = s.session.presentation ?? createEmptyPresentation();
+          return {
+            session: {
+              ...s.session,
+              presentation: { ...pres, activeSlideIndex },
+            },
+          };
+        }),
+
+      setPresentationRunOfferTemplateId: (runOfferTemplateId) =>
+        set((s) => {
+          if (!s.session?.business) return s;
+          const prev = s.session.presentation ?? createEmptyPresentation();
+          const generatedSlides = regenerateProofSlides({
+            session: s.session,
+            offerTemplates: s.offerTemplates,
+            defaultOfferTemplateId: s.defaultOfferTemplateId,
+            presentationPatch: { ...prev, runOfferTemplateId },
+          });
+          return {
+            session: {
+              ...s.session,
+              presentation: {
+                ...prev,
+                runOfferTemplateId,
+                generatedSlides,
+                pricingTierId: null,
+                pricingResponse: null,
+                pricingAccepted: false,
+                activeSlideIndex: 0,
+              },
+            },
+          };
+        }),
+
+      setOfferTemplates: (offerTemplates) =>
+        set((s) => {
+          if (!s.session?.business) {
+            return { offerTemplates };
+          }
+          const prev = s.session.presentation ?? createEmptyPresentation();
+          if (prev.generatedSlides.length === 0) {
+            return { offerTemplates };
+          }
+          const generatedSlides = regenerateProofSlides({
+            session: s.session,
+            offerTemplates,
+            defaultOfferTemplateId: s.defaultOfferTemplateId,
+          });
+          return {
+            offerTemplates,
+            session: {
+              ...s.session,
+              presentation: {
+                ...prev,
+                generatedSlides,
+                pricingTierId: null,
+                pricingResponse: null,
+                pricingAccepted: false,
+              },
+            },
+          };
+        }),
+
+      setDefaultOfferTemplateId: (defaultOfferTemplateId) =>
+        set((s) => {
+          if (!s.session?.business) {
+            return { defaultOfferTemplateId };
+          }
+          const prev = s.session.presentation ?? createEmptyPresentation();
+          const shouldRegen =
+            prev.generatedSlides.length > 0 && (prev.runOfferTemplateId == null || prev.runOfferTemplateId === "");
+          if (!shouldRegen) {
+            return { defaultOfferTemplateId };
+          }
+          const generatedSlides = regenerateProofSlides({
+            session: s.session,
+            offerTemplates: s.offerTemplates,
+            defaultOfferTemplateId,
+          });
+          return {
+            defaultOfferTemplateId,
+            session: {
+              ...s.session,
+              presentation: {
+                ...prev,
+                generatedSlides,
+                pricingTierId: null,
+                pricingResponse: null,
+                pricingAccepted: false,
+              },
+            },
+          };
+        }),
+
+      addPostRunCapture: (row) =>
+        set((s) => {
+          const id =
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `cap-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+          const full: PostRunCapture = {
+            ...row,
+            id,
+            capturedAt: new Date().toISOString(),
+          };
+          return { postRunCaptures: [full, ...s.postRunCaptures].slice(0, 200) };
         }),
 
       setPresentationPricingTierId: (tierId) =>
@@ -777,7 +1077,7 @@ export const useSessionStore = create<SessionStore>()(
     }),
     {
       name: PERSIST_KEY_SESSION,
-      version: 14,
+      version: 19,
       storage: sessionPersistStorage,
       merge: (persistedState, currentState) => {
         if (persistedState == null || typeof persistedState !== "object") {
@@ -794,6 +1094,13 @@ export const useSessionStore = create<SessionStore>()(
           merged.coachingMomentum = "flat";
         }
         if (merged.demoSlideType === undefined) merged.demoSlideType = null;
+        if (!Array.isArray(merged.offerTemplates) || merged.offerTemplates.length === 0) {
+          merged.offerTemplates = DEFAULT_OFFER_TEMPLATES;
+        }
+        if (typeof merged.defaultOfferTemplateId !== "string" || !merged.defaultOfferTemplateId) {
+          merged.defaultOfferTemplateId = DEFAULT_OFFER_TEMPLATE_ID;
+        }
+        if (!Array.isArray(merged.postRunCaptures)) merged.postRunCaptures = [];
         return merged;
       },
       onRehydrateStorage: () => (_state, error) => {
@@ -819,6 +1126,29 @@ export const useSessionStore = create<SessionStore>()(
               if (p.pricingAccepted === undefined) p.pricingAccepted = false;
               if (p.interactiveProof == null) {
                 p.interactiveProof = createInitialInteractiveDemoState();
+              }
+              // V17: RFC 7 proof-led packs (ids only — not media payloads)
+              if (p.packId === undefined || typeof p.packId !== "string") {
+                p.packId = DEFAULT_PRESENTATION_PACK_ID;
+              }
+              if (
+                p.openingMode === undefined ||
+                (p.openingMode !== "proof-snapshot" &&
+                  p.openingMode !== "micro-demo" &&
+                  p.openingMode !== "pain-to-proof")
+              ) {
+                p.openingMode = DEFAULT_OPENING_MODE;
+              }
+              const slides = p.generatedSlides as { type?: string }[] | undefined;
+              const firstType = slides?.[0]?.type;
+              if (firstType === "business-snapshot") {
+                p.generatedSlides = [];
+              }
+              if (typeof p.activeSlideIndex !== "number" || Number.isNaN(p.activeSlideIndex)) {
+                p.activeSlideIndex = 0;
+              }
+              if (p.runOfferTemplateId === undefined) {
+                p.runOfferTemplateId = null;
               }
             }
             // Patch scalar and array fields
@@ -859,6 +1189,14 @@ export const useSessionStore = create<SessionStore>()(
             }
             if (s.methodStrategy === undefined) {
               s.methodStrategy = createInitialMethodStrategySnapshot();
+            }
+            // V15: RFC 6A pre-call provenance
+            if (s.preCallIntelSource === undefined) {
+              s.preCallIntelSource = null;
+            }
+            // V16: RFC 6 directory autofill marker
+            if (s.directoryAutofillAt === undefined) {
+              s.directoryAutofillAt = null;
             }
             // V13: `closeRecommendation` removed — embed into `closeAssessment.recommendation`
             if ("closeRecommendation" in s) {
@@ -915,6 +1253,48 @@ export const useSessionStore = create<SessionStore>()(
             v10.coachingMomentum = "flat";
           }
           if (v10.demoSlideType === undefined) v10.demoSlideType = null;
+
+          const v19 = persisted as {
+            offerTemplates?: OfferTemplate[];
+            defaultOfferTemplateId?: string;
+            postRunCaptures?: PostRunCapture[];
+          };
+          if (!Array.isArray(v19.offerTemplates) || v19.offerTemplates.length === 0) {
+            v19.offerTemplates = DEFAULT_OFFER_TEMPLATES;
+          }
+          if (typeof v19.defaultOfferTemplateId !== "string" || !v19.defaultOfferTemplateId) {
+            v19.defaultOfferTemplateId = DEFAULT_OFFER_TEMPLATE_ID;
+          }
+          if (!Array.isArray(v19.postRunCaptures)) v19.postRunCaptures = [];
+          else {
+            v19.postRunCaptures = v19.postRunCaptures.map((raw) => {
+              const c = raw as PostRunCapture & Record<string, unknown>;
+              const packId =
+                typeof c.packId === "string" && c.packId.length > 0 ? c.packId : DEFAULT_PRESENTATION_PACK_ID;
+              const labelOk =
+                typeof c.packLabelSnapshot === "string" && c.packLabelSnapshot.trim().length > 0;
+              const at = c.askTiming as PostRunAskTiming | undefined;
+              const askTimingOk =
+                at === "too_early" || at === "on_time" || at === "too_late" || at === "n_a";
+              const ps = c.proofStrength as PostRunProofStrength | undefined;
+              const proofOk = ps === "weak" || ps === "ok" || ps === "strong";
+              const ru = c.reuseSameRun as PostRunReuseIntent | undefined;
+              const reuseOk = ru === "yes" || ru === "maybe" || ru === "no";
+              return {
+                ...c,
+                packLabelSnapshot: labelOk ? c.packLabelSnapshot : getPresentationPackDefinition(packId).label,
+                runOfferTemplateIdSnapshot:
+                  c.runOfferTemplateIdSnapshot === undefined ? null : c.runOfferTemplateIdSnapshot,
+                askTiming: askTimingOk ? at! : "n_a",
+                proofStrength: proofOk ? ps! : "ok",
+                reuseSameRun: reuseOk ? ru! : "maybe",
+                strongestProofMoment:
+                  typeof c.strongestProofMoment === "string" && c.strongestProofMoment.trim()
+                    ? c.strongestProofMoment
+                    : "—",
+              } as PostRunCapture;
+            });
+          }
         } catch {
           /* Corrupt localStorage — let persist fall back to defaults */
         }

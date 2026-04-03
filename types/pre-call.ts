@@ -59,8 +59,7 @@ export type PreCallSource = "ai" | "deterministic";
 
 /**
  * Enriched pre-call result: normalized intel + provenance metadata.
- * Used internally by the pipeline; Session stores only `PreCallIntel`
- * to keep the persisted shape lean.
+ * Session stores `PreCallIntel` plus `preCallIntelSource` (RFC 6A) on the aggregate.
  */
 export type PreCallResult = PreCallIntel & {
   source: PreCallSource;

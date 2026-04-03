@@ -6,6 +6,7 @@ import type {
   InteractiveDemoState,
 } from "@/lib/flows/interactiveDemoEngine";
 import { InteractiveProof } from "@/components/presentation/InteractiveProof";
+import { ProofLedBeat } from "@/components/presentation/ProofLedBeat";
 import { cn } from "@/lib/utils/cn";
 
 type SlideRendererProps = {
@@ -23,6 +24,13 @@ function visualPlaceholderLabel(type: PresentationSlide["type"]): string {
     case "proof":
     case "interactive-proof":
       return "Proof — outcome, review, or before/after.";
+    case "proof-snapshot":
+    case "comparison-proof":
+    case "mock-flow":
+    case "impact-stat":
+      return "Proof visual — pattern loads from pack registry.";
+    case "decision-next":
+      return "Decision bridge — short, one motion.";
     case "cost-roi":
       return "Numbers — simple chart or rough math.";
     case "solution":
@@ -45,6 +53,16 @@ export function SlideRenderer({
   onSkipWalkthrough,
 }: SlideRendererProps) {
   const dani = tone === "dani";
+
+  if (
+    slide.type === "proof-snapshot" ||
+    slide.type === "mock-flow" ||
+    slide.type === "comparison-proof" ||
+    slide.type === "impact-stat" ||
+    slide.type === "decision-next"
+  ) {
+    return <ProofLedBeat slide={slide} tone={tone} />;
+  }
 
   if (slide.type === "interactive-proof") {
     return (

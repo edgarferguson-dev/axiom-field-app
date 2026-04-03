@@ -211,6 +211,10 @@ export type Session = {
   phase: SessionPhase;
   business: BusinessProfile | null;
   preCallIntel: PreCallIntel | null;
+  /** RFC 6A — how the current brief was produced (AI vs rules fallback). */
+  preCallIntelSource: PreCallSource | null;
+  /** RFC 6 — set when Places/directory row applied; cleared on new scout. Rep edits remain authoritative. */
+  directoryAutofillAt: number | null;
   /** Go / No-Go gate from constraints + industry — before strategy brief. */
   fieldEngagementDecision: FieldEngagementDecision | null;
   /** Live demo guided close rail — single source of truth for progression */

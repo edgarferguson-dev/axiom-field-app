@@ -1,12 +1,11 @@
 /**
- * Pre-call prompt builder (RFC 6).
+ * Pre-call prompt builder (RFC 6 / 6A).
  *
  * Pure function — no side effects, no API calls.
- * Extracted from lib/ai/pre-call.ts so it can be tested and adjusted
- * independently of the Anthropic client.
  */
 
 import type { BusinessProfile, FieldEngagementDecision } from "@/types/session";
+import { PRECALL_FIELD_LIMITS } from "@/lib/pre-call/normalizer";
 
 export type PreCallPromptMessages = {
   system: string;
@@ -17,7 +16,10 @@ export function buildPreCallPrompt(
   business: BusinessProfile,
   gate?: FieldEngagementDecision | null
 ): PreCallPromptMessages {
-  const system = `Tight walk-in intel for SMB field reps. Blunt, plain. No fluff. JSON only.`;
+  const system = `You are the pre-call intelligence engine for Axiom Field — in-person B2B field reps (SMB, walk-in / lobby context).
+Your job: produce ONE JSON object only. No markdown fences, no commentary before or after the JSON, no trailing text.
+Voice: tactical, plain English, industry-aware using the given business type — not generic SaaS platitudes.
+Every string must stay within the character budgets in the user message — shorter is better.`;
 
   const lookupLines = [
     business.website && `Website (rep-entered): ${business.website}`,
@@ -49,45 +51,56 @@ Rules: Align recommendedAngle and keyOpportunities[0] with the primary angle. If
       ? business.notes.trim()
       : "None listed — infer from type + lead path only.";
 
-  const user = `Snapshot for walk-in (not marketing).
+  const L = PRECALL_FIELD_LIMITS;
 
-Business: ${business.name}
-Type: ${business.type}
-How they track leads today: ${business.currentSystem}
-Where leads actually come from: ${business.leadSource}
-Constraints / floor signals (rep taps): ${constraintLine}
-
-Optional context (may be empty):
-${lookupBlock}
-${gateBlock}
-
-Return JSON with exactly these keys (keep strings tight):
+  const user = `Return a single JSON object with EXACTLY these keys and types (no extra keys):
 
 {
-  "painPattern": "Max 2 sentences. Name the leak in operator language.",
+  "painPattern": string,
   "riskBand": "high" | "medium" | "low",
-  "missedValueEstimate": "One line with a number range or concrete loss shape.",
-  "keyOpportunities": ["string1", "string2", "string3"],
-  "recommendedAngle": "One cold sentence. No quotes inside the string.",
-  "likelyObjection": "First objection + one-line counter (no essay).",
-  "approachTiming": "Line 1: First 90s — what to do, then what to ask. Line 2: what not to lead with.",
+  "missedValueEstimate": string,
+  "keyOpportunities": [string, string, string],
+  "recommendedAngle": string,
+  "likelyObjection": string,
+  "approachTiming": string,
   "tabletGuidance": "now" | "later" | "either",
   "channelMode": "phone-first" | "verbal-first" | "tablet-first"
 }
 
-Rules for keyOpportunities (3 items, order matters):
-- [0] = The one credibility anchor to establish first (fact, pattern, or observation tied to THIS business type—not generic "build rapport").
-- [1] and [2] = Tight follow-up probes or proof hooks if the conversation opens up.
+Character budgets (hard — stay at or under):
+- painPattern: max ${L.painPattern} chars (1–2 short sentences; name the revenue leak in operator terms for THIS industry type)
+- missedValueEstimate: max ${L.missedValueEstimate} chars (one line; number range or concrete loss shape)
+- each keyOpportunities[i]: max ${L.keyOpportunity} chars
+- recommendedAngle: max ${L.recommendedAngle} chars (one cold-opener sentence; no nested quotes)
+- likelyObjection: max ${L.likelyObjection} chars (objection + one-line counter)
+- approachTiming: max ${L.approachTiming} chars (two short lines: first 90s do/ask; what not to lead with)
+
+Context snapshot (walk-in, not marketing copy):
+
+Business name: ${business.name}
+Business type (use for industry-specific language): ${business.type}
+How they track leads today: ${business.currentSystem}
+Where leads actually come from: ${business.leadSource}
+Constraints / floor signals (rep-selected): ${constraintLine}
+
+Optional enrichment (may be empty):
+${lookupBlock}
+${gateBlock}
+
+keyOpportunities order (exactly 3 strings):
+- [0] One credibility anchor tied to "${business.type}" — specific, not generic rapport fluff.
+- [1] Follow-up probe if they open up.
+- [2] Proof or next-step hook if momentum appears.
 
 tabletGuidance:
-- now: chaotic or visual learner energy; a fast screen pass helps.
-- later: skeptical, slammed, or trust not earned—conversation before device.
-- either: genuinely unclear.
+- now: chaotic floor or visual learner; quick screen pass helps.
+- later: skeptical or slammed — conversation before device.
+- either: unclear.
 
 channelMode:
-- phone-first: they live on callbacks/voicemail.
-- verbal-first: default for most in-person drop-ins.
-- tablet-first: they ask to see it or think in screens.`;
+- phone-first: callbacks/voicemail culture.
+- verbal-first: default most lobby drop-ins.
+- tablet-first: they invite screen or think in UI.`;
 
   return { system, user };
 }

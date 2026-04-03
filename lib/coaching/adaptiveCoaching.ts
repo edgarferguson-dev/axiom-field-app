@@ -1,6 +1,8 @@
 import type { BuyerState, CoachingMomentum } from "@/types/demo";
 import type { SessionPhase } from "@/types/session";
 import type { SignalColor } from "@/types/session";
+import type { MerchantProofBeatCue } from "@/types/merchantProof";
+import { transitionIntentLabel } from "@/lib/presentation/merchantTransitionLabels";
 
 /** One spoken line + eyes/hands cue — no paragraphs. */
 export type CoachingLine = {
@@ -14,6 +16,8 @@ export type AdaptiveCoachingInput = {
   momentum: CoachingMomentum;
   phase: SessionPhase;
   currentStep: string | null;
+  /** When set (proof beat with cues), aligns the five-move rail with MerchantProofCoachRail doctrine */
+  merchantProofBeat?: MerchantProofBeatCue | null;
 };
 
 export type AdaptiveCoachingOutput = {
@@ -31,11 +35,53 @@ function L(line: string, cue: string): CoachingLine {
 /**
  * DaNI — Deal Activation & New Income. Rule-based, one line each, in-room only.
  */
+function merchantProofCoachingOverlay(
+  beat: MerchantProofBeatCue,
+  buyerState: BuyerState,
+  signal: SignalColor,
+  momentum: CoachingMomentum
+): AdaptiveCoachingOutput {
+  const intent = beat.transitionIntent ?? "continue_proof";
+  const room = matrix(buyerState, signal, momentum);
+  const mom =
+    momentum === "up"
+      ? "Short clauses — don’t stack proof on proof."
+      : momentum === "down"
+        ? "Add one calm breath before you speak."
+        : "Steady shoulders — let the beat finish.";
+
+  const firstPushback = beat.objectionCue
+    ? L(beat.objectionCue, "One sentence — then hush.")
+    : L(
+        room.rebuttals[0]?.line ?? "If they hedge, name what you heard in six words.",
+        room.rebuttals[0]?.cue ?? "Still hands."
+      );
+
+  return {
+    nextMove: L(transitionIntentLabel(intent), beat.transitionTrigger),
+    sayThis: L(beat.openingQuestion, "Ask once — then turn the screen, not your mouth."),
+    question: L(beat.reactionProbe, "After they answer — don’t rescue with features."),
+    rebuttals: [
+      firstPushback,
+      L(beat.silenceCue, "Quiet is part of the close — protect it."),
+      ...(beat.hesitationCue
+        ? [L(beat.hesitationCue, "Stall isn’t no — breathe once, then one line.")]
+        : []),
+    ],
+    backup: L(beat.privateCoachCue, mom),
+  };
+}
+
 export function getAdaptiveCoaching(input: AdaptiveCoachingInput): AdaptiveCoachingOutput {
-  const { buyerState, signal, momentum, phase, currentStep } = input;
+  const { buyerState, signal, momentum, phase, currentStep, merchantProofBeat } = input;
+  const phaseBoost = phase === "offer-fit" || phase === "closing";
+
+  if (merchantProofBeat && !phaseBoost) {
+    return merchantProofCoachingOverlay(merchantProofBeat, buyerState, signal, momentum);
+  }
+
   const core = matrix(buyerState, signal, momentum);
   const step = stepBoost(currentStep);
-  const phaseBoost = phase === "offer-fit" || phase === "closing";
 
   const nextMove = phaseBoost
     ? L("Tie offer to pain they already named.", "Hold eye contact — nod once.")
@@ -326,6 +372,11 @@ function stepBoost(step: string | null): {
       };
     case "proof":
     case "interactive-proof":
+    case "proof-snapshot":
+    case "mock-flow":
+    case "comparison-proof":
+    case "impact-stat":
+    case "decision-next":
       return {
         nextMove: "Let them confirm the story fits.",
         nextCue: "Point at proof, not at them.",

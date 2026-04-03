@@ -34,26 +34,36 @@ function LineBlock({ step, label, item }: { step: number; label: string; item: C
   );
 }
 
+export type CoachingPanelVariant = "classic" | "merchantRhythm";
+
 export type QuickControlPanelProps = {
   coaching: AdaptiveCoachingOutput;
   className?: string;
+  /** merchantRhythm: labels match proof-beat doctrine (ask / probe / wait) */
+  variant?: CoachingPanelVariant;
 };
+
+const RHYTHM_LABELS = ["Then / next", "Ask", "Probe", "Wait / if pushback", "Coach"] as const;
 
 /**
  * DaNI private glance — five priority lines, body language in parentheses.
  */
-export function QuickControlPanel({ coaching, className }: QuickControlPanelProps) {
+export function QuickControlPanel({ coaching, className, variant = "classic" }: QuickControlPanelProps) {
   const [openRebuttals, setOpenRebuttals] = useState(false);
   const quickRebuttal = coaching.rebuttals[0] ?? FALLBACK_REBUTTAL;
   const moreRebuttals = coaching.rebuttals.slice(1);
+  const labels =
+    variant === "merchantRhythm"
+      ? RHYTHM_LABELS
+      : (["Next Move", "Say This", "Quick Question", "Quick Rebuttal", "Backup Move"] as const);
 
   return (
     <div className={cn("flex flex-col gap-2.5 sm:gap-3", className)}>
-      <LineBlock step={1} label="Next Move" item={coaching.nextMove} />
-      <LineBlock step={2} label="Say This" item={coaching.sayThis} />
-      <LineBlock step={3} label="Quick Question" item={coaching.question} />
-      <LineBlock step={4} label="Quick Rebuttal" item={quickRebuttal} />
-      <LineBlock step={5} label="Backup Move" item={coaching.backup} />
+      <LineBlock step={1} label={labels[0]} item={coaching.nextMove} />
+      <LineBlock step={2} label={labels[1]} item={coaching.sayThis} />
+      <LineBlock step={3} label={labels[2]} item={coaching.question} />
+      <LineBlock step={4} label={labels[3]} item={quickRebuttal} />
+      <LineBlock step={5} label={labels[4]} item={coaching.backup} />
 
       {moreRebuttals.length > 0 ? (
         <div className="mt-1 rounded-xl border border-dashed border-border/90 bg-card/50">

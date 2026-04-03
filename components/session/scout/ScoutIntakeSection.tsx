@@ -30,6 +30,10 @@ type ScoutIntakeSectionProps = {
   onContinueWithoutBrief: () => void;
   engagementGate: FieldEngagementDecision | null;
   canShowEngagementGate: boolean;
+  /** RFC 6 — Places/directory merged profile (also updates session). */
+  onDirectoryApply?: (merged: BusinessProfile) => void;
+  /** RFC 6 — unix ms when a directory row was applied; drives compact hint only. */
+  directoryAutofillAt: number | null;
 };
 
 export function ScoutIntakeSection({
@@ -49,15 +53,25 @@ export function ScoutIntakeSection({
   onContinueWithoutBrief,
   engagementGate,
   canShowEngagementGate,
+  onDirectoryApply,
+  directoryAutofillAt,
 }: ScoutIntakeSectionProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <BusinessLookupPanel
         form={form}
         onChange={onFormChange}
+        onDirectoryApply={onDirectoryApply}
         businessTypes={[...businessTypes]}
       />
 
+      {directoryAutofillAt != null ? (
+        <p className="rounded-lg border border-border/80 bg-card/60 px-3 py-2 text-xs text-muted">
+          Directory data applied — edit any field anytime. The brief uses whatever is on screen when you generate (not the raw search row).
+        </p>
+      ) : null}
+
+      {/* RFC 6: sections stay rep-controlled — we never call open/close programmatically. */}
       <details className="group rounded-2xl border border-border bg-card shadow-soft">
         <summary className="cursor-pointer list-none px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">Lead context</span>

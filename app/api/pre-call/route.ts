@@ -38,11 +38,16 @@ export async function POST(request: NextRequest) {
   let source: PreCallSource;
   let intel;
 
+  const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  if (!hasKey) {
+    console.warn("[pre-call] ANTHROPIC_API_KEY missing — deterministic brief only");
+  }
+
   try {
     intel = await generatePreCallIntel(body, gate);
     source = "ai";
   } catch (err) {
-    console.warn("[pre-call] AI generation failed — using deterministic fallback:", err);
+    console.warn("[pre-call] AI generation failed after retries — using deterministic fallback:", err);
     intel = buildFallbackPreCallIntel(body, constraints, gate, fieldSnapshot);
     source = "deterministic";
   }

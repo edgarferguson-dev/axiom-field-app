@@ -30,7 +30,10 @@ export default function FieldReadPage({
 }) {
   const router = useRouter();
   const session = useSessionStore((s) => s.session);
+  const preCallIntelSource = useSessionStore((s) => s.session?.preCallIntelSource ?? null);
   const setBusiness = useSessionStore((s) => s.setBusiness);
+  const setDirectoryAutofillAt = useSessionStore((s) => s.setDirectoryAutofillAt);
+  const directoryAutofillAt = useSessionStore((s) => s.session?.directoryAutofillAt ?? null);
   const setPreCallIntel = useSessionStore((s) => s.setPreCallIntel);
   const setPhase = useSessionStore((s) => s.setPhase);
   const setConstraints = useSessionStore((s) => s.setConstraints);
@@ -64,6 +67,22 @@ export default function FieldReadPage({
       });
     },
     [setBusiness, setConstraints, setFieldSnapshot]
+  );
+
+  /** RFC 6 — merge directory/places into form + session; rep edits after this stay authoritative. */
+  const handleDirectoryApply = useCallback(
+    (next: BusinessProfile) => {
+      const constraintRows = constraintsFromMap(constraintMap);
+      const labels = buildCapturedConstraintLabels(fieldSnapshot, constraintRows);
+      setForm(next);
+      setBusiness({
+        ...next,
+        capturedConstraintLabels: labels.length ? labels : undefined,
+        notes: undefined,
+      });
+      setDirectoryAutofillAt(Date.now());
+    },
+    [constraintMap, fieldSnapshot, setBusiness, setDirectoryAutofillAt]
   );
 
   useEffect(() => {
@@ -152,11 +171,14 @@ export default function FieldReadPage({
       });
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = (await res.json()) as PreCallIntel & { source?: PreCallSource };
-      // Client-side normalize as a final defense against stale/partial shapes.
-      const normalized = normalizePreCallIntel(data);
+      const { source: briefSource, ...rest } = data;
+      const normalized = normalizePreCallIntel(rest);
       if (!normalized) throw new Error("Unusable response shape");
       setIntel(normalized);
-      setPreCallIntel(normalized);
+      setPreCallIntel(
+        normalized,
+        briefSource === "ai" || briefSource === "deterministic" ? briefSource : null
+      );
       persistConstraintsToStore(fieldSnapshot, constraintMap, payload);
     } catch {
       // Only reached on network failure or a true 5xx — the route handles AI
@@ -190,7 +212,8 @@ export default function FieldReadPage({
     setForm(emptyScoutProfile());
     setFieldSnapshotLocal([]);
     setConstraintMap(new Map());
-    setPreCallIntel(null);
+    setPreCallIntel(null, null);
+    setDirectoryAutofillAt(null);
     setFieldEngagementDecision(null);
     setCloseState(null);
     setCloseCTAs(null, null);
@@ -256,11 +279,18 @@ export default function FieldReadPage({
             onContinueWithoutBrief={goToDemo}
             engagementGate={engagementGate}
             canShowEngagementGate={canScan}
+            onDirectoryApply={handleDirectoryApply}
+            directoryAutofillAt={directoryAutofillAt}
           />
         )}
 
         {intel && (
-          <ScoutBriefSection intel={intel} onContinue={goToDemo} onNewScout={handleRescan} />
+          <ScoutBriefSection
+            intel={intel}
+            briefSource={preCallIntelSource}
+            onContinue={goToDemo}
+            onNewScout={handleRescan}
+          />
         )}
       </div>
     </SessionStageShell>

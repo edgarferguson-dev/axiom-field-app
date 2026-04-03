@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { useSessionStore } from "@/store/session-store";
 import type { PresentationSlide, SlideType } from "@/lib/flows/presentationEngine";
+import { MerchantProofVisual } from "@/components/presentation/merchant/MerchantProofVisuals";
 
 function stageGuidance(
   type: SlideType,
@@ -12,12 +13,19 @@ function stageGuidance(
 ): string | null {
   if (dani) return null;
   switch (type) {
+    case "proof-snapshot":
+    case "comparison-proof":
+    case "mock-flow":
+    case "impact-stat":
+      return "Let the visual do the work — one sentence max, then silence.";
+    case "decision-next":
+      return "Confirm appetite before numbers — then advance to pricing.";
     case "interactive-proof":
       return interactiveProofComplete
         ? "Proof is complete. Advance when the buyer is aligned."
         : "Complete the proof walkthrough together — then pricing unlocks.";
     case "pricing":
-      return "Select a tier that matches what you heard, then move to the decision step.";
+      return "One start option — let them nod, then continue.";
     case "presentation-actions":
       return "Pick the path that matches the room. Start setup is the forward motion when they are ready.";
     default:
@@ -75,6 +83,7 @@ export function PresentationEngine({
     (s) => s.dispatchInteractiveProofEvent
   );
   const setDemoSlideType = useSessionStore((s) => s.setDemoSlideType);
+  const setPresentationActiveSlideIndex = useSessionStore((s) => s.setPresentationActiveSlideIndex);
 
   const generatedSlides = presentation?.generatedSlides;
   const slides = generatedSlides ?? EMPTY_SLIDES;
@@ -108,6 +117,26 @@ export function PresentationEngine({
   useEffect(() => {
     setDemoSlideType(activeSlideType);
   }, [activeSlideType, setDemoSlideType]);
+
+  useEffect(() => {
+    setPresentationActiveSlideIndex(index);
+  }, [index, setPresentationActiveSlideIndex]);
+
+  const singlePricingTierId =
+    business && slides.length > 0
+      ? (() => {
+          const sl = slides[Math.min(index, slides.length - 1)]!;
+          if (sl.type !== "pricing" || !("tiers" in sl) || sl.tiers.length !== 1) return null;
+          return sl.tiers[0]!.id;
+        })()
+      : null;
+
+  useEffect(() => {
+    if (!singlePricingTierId) return;
+    const current = presentation?.pricingTierId ?? null;
+    if (current === singlePricingTierId) return;
+    setPresentationPricingTierId(singlePricingTierId);
+  }, [singlePricingTierId, presentation?.pricingTierId, setPresentationPricingTierId]);
 
   const interactiveProof = presentation?.interactiveProof;
   const interactiveProofCompleted = interactiveProof?.step === "confirmed";
@@ -147,12 +176,13 @@ export function PresentationEngine({
         ) : (
           <div className="mx-auto mb-3 h-8 w-8 animate-pulse rounded-full border-2 border-accent/20 border-t-accent" />
         )}
-        Preparing your deck…
+        Loading proof run…
       </div>
     );
   }
 
   const slide = slides[index]!;
+  const hasBeatConversation = "conversation" in slide && Boolean(slide.conversation);
   const stageHint = stageGuidance(slide.type, interactiveProofCompleted, daniSurface);
   const atStart = index === 0;
   const atEnd = index === slides.length - 1;
@@ -172,16 +202,16 @@ export function PresentationEngine({
   const chapterIdx = narrativeChapterIndexForSlideType(slide.type);
 
   const shellClass = daniSurface
-    ? "relative w-full max-w-none overflow-hidden rounded-2xl bg-transparent px-3 py-6 sm:px-6 sm:py-8 md:px-10 md:py-10 lg:px-12"
+    ? "relative w-full max-w-none overflow-hidden rounded-2xl bg-transparent px-3 py-5 sm:px-6 sm:py-8 md:px-10 md:py-10 lg:px-12"
     : variant === "continuous"
-      ? "relative overflow-hidden rounded-xl border border-border bg-surface p-6 shadow-soft sm:p-8"
-      : "rounded-2xl border border-border bg-card p-6 shadow-soft";
+      ? "relative overflow-hidden rounded-xl border border-border bg-surface p-4 shadow-soft sm:p-8"
+      : "rounded-2xl border border-border bg-card p-4 shadow-soft sm:p-6";
 
   const titleClass = daniSurface
     ? "text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl sm:leading-[1.1] md:text-5xl md:leading-[1.08]"
     : variant === "continuous"
-      ? "text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem] sm:leading-snug"
-      : "text-2xl font-semibold tracking-tight text-foreground";
+      ? "text-balance text-xl font-semibold tracking-tight text-foreground sm:text-2xl sm:leading-snug md:text-[1.75rem]"
+      : "text-xl font-semibold tracking-tight text-foreground sm:text-2xl";
 
   const subtitleClass = daniSurface
     ? "mt-5 max-w-4xl text-lg font-medium leading-snug text-foreground/80 line-clamp-4 sm:mt-6 sm:text-xl md:text-2xl md:leading-snug"
@@ -204,7 +234,7 @@ export function PresentationEngine({
         {variant === "continuous" && !daniSurface && <BeatOneLiners slideType={slide.type} />}
 
         {variant === "continuous" && !daniSurface && (
-          <div className="mb-5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <div className="mb-4 hidden flex-wrap items-center gap-1.5 sm:mb-5 sm:flex sm:gap-2">
             {NARRATIVE_CHAPTERS.map((ch, i) => {
               const active = chapterIdx === i;
               const past = chapterIdx > i;
@@ -225,8 +255,8 @@ export function PresentationEngine({
           </div>
         )}
 
-        <div className={cn("mb-5", variant === "continuous" && !daniSurface && "border-b border-border/25 pb-5")}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className={cn("mb-4 sm:mb-5", variant === "continuous" && !daniSurface && "border-b border-border/25 pb-4 sm:pb-5")}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1">
               {slide.kicker && (
                 <p
@@ -307,7 +337,7 @@ export function PresentationEngine({
           )}
         </div>
 
-        {variant === "continuous" && daniSurface && (
+        {variant === "continuous" && daniSurface && !hasBeatConversation && (
           <div className="mb-8 sm:mb-10">
             <BeatOneLiners slideType={slide.type} variant="dani" />
           </div>
@@ -337,46 +367,87 @@ export function PresentationEngine({
 
         {slide.type === "pricing" && (
           <div className={cn("mt-2 space-y-5", daniSurface && "mt-4 space-y-6")}>
+            {"merchantVisual" in slide && slide.merchantVisual ? (
+              <div className="mb-2">
+                <MerchantProofVisual
+                  surface={slide.merchantVisual}
+                  businessLabel={business?.name ?? undefined}
+                  contextLine={
+                    business?.type?.trim()
+                      ? `How ${business.type.trim()} owners usually describe the leak`
+                      : undefined
+                  }
+                />
+              </div>
+            ) : null}
             <div
               className={cn(
-                "rounded-xl border border-border/80 bg-background/40 px-4 py-3",
+                "rounded-xl border border-border/80 bg-background/40 px-3 py-2.5 sm:px-4 sm:py-3",
                 daniSurface && "border-border/60 bg-card/50 px-5 py-4"
               )}
             >
               <p className="ax-label">Commitment path</p>
               <p className={cn("mt-1 text-foreground", daniSurface ? "text-base font-medium sm:text-lg" : "text-sm")}>
                 {daniSurface
-                  ? "Pick a start tier — next slide locks the move."
-                  : "Choose a tier, then continue — you&apos;ll confirm how to move forward on the next slide."}
+                  ? "One lean start — next slide locks the move."
+                  : "One offer on screen — nod means you’re aligned."}
               </p>
             </div>
-            <div className={cn("grid gap-3 md:grid-cols-3", daniSurface && "gap-4 md:gap-5")}>
-              {slide.tiers.map((tier) => (
-                <PricingCard
-                  key={tier.id}
-                  tier={tier}
-                  selected={selectedTierId === tier.id}
-                  onSelect={() => setPresentationPricingTierId(tier.id)}
-                />
-              ))}
-            </div>
+            {slide.tiers.length === 1 ? (
+              <div className="mx-auto max-w-md rounded-xl border border-accent/25 bg-accent/[0.06] px-4 py-4 shadow-inner">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{slide.tiers[0]!.name}</p>
+                    {slide.tiers[0]!.subtitle ? (
+                      <p className="mt-0.5 text-xs text-muted">{slide.tiers[0]!.subtitle}</p>
+                    ) : null}
+                  </div>
+                  <p className="text-right text-lg font-black tabular-nums text-accent">{slide.tiers[0]!.price}</p>
+                </div>
+                <ul className="mt-3 space-y-1.5 border-t border-border/40 pt-3">
+                  {slide.tiers[0]!.highlights.map((h) => (
+                    <li key={h} className="flex items-start gap-2 text-xs text-foreground/90">
+                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
+                      {h}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  "grid gap-3",
+                  slide.tiers.length <= 1 ? "mx-auto max-w-md md:grid-cols-1" : "md:grid-cols-3",
+                  daniSurface && slide.tiers.length > 1 && "gap-4 md:gap-5"
+                )}
+              >
+                {slide.tiers.map((tier) => (
+                  <PricingCard
+                    key={tier.id}
+                    tier={tier}
+                    selected={selectedTierId === tier.id}
+                    onSelect={() => setPresentationPricingTierId(tier.id)}
+                  />
+                ))}
+              </div>
+            )}
 
             {slide.disclaimer && (
-              <div className="text-xs leading-relaxed text-muted">{slide.disclaimer}</div>
+              <div className="text-[11px] leading-relaxed text-muted sm:text-xs">{slide.disclaimer}</div>
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs text-muted">
-                {selectedTierId
-                  ? "Tier selected — continue to the decision step."
+              <div className="text-[11px] text-muted sm:text-xs">
+                {slide.tiers.length === 1 || selectedTierId
+                  ? "Ready when they are — one tap forward."
                   : "Select a tier to unlock continue."}
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
                   className={cn(
-                    "rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition",
+                    "min-h-[48px] w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-soft transition sm:w-auto sm:py-2.5",
                     "hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                   )}
                   disabled={!selectedTierId}
@@ -390,7 +461,7 @@ export function PresentationEngine({
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl border border-border/80 bg-card/60 px-4 py-2.5 text-sm font-medium text-muted transition hover:border-accent/40 hover:text-foreground"
+                  className="min-h-[48px] w-full rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-sm font-medium text-muted transition hover:border-accent/40 hover:text-foreground sm:w-auto sm:min-h-0 sm:py-2.5"
                   onClick={() => {
                     setPresentationPricingResponse("hesitate");
                     onHesitate?.();
@@ -400,7 +471,7 @@ export function PresentationEngine({
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl border border-border/80 bg-card/60 px-4 py-2.5 text-sm font-medium text-muted transition hover:border-signal-red/40 hover:text-signal-red"
+                  className="min-h-[48px] w-full rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-sm font-medium text-muted transition hover:border-signal-red/40 hover:text-signal-red sm:w-auto sm:min-h-0 sm:py-2.5"
                   onClick={() => {
                     setPresentationPricingResponse("reject");
                     onReject?.();
@@ -415,6 +486,19 @@ export function PresentationEngine({
 
         {slide.type === "presentation-actions" && onPresentationAction && (
           <div className={cn("mt-4 space-y-4", daniSurface && "mt-6 space-y-5")}>
+            {"merchantVisual" in slide && slide.merchantVisual ? (
+              <div className="mb-2">
+                <MerchantProofVisual
+                  surface={slide.merchantVisual}
+                  businessLabel={business?.name ?? undefined}
+                  contextLine={
+                    business?.type?.trim()
+                      ? `How ${business.type.trim()} owners usually describe the leak`
+                      : undefined
+                  }
+                />
+              </div>
+            ) : null}
             <div>
               <p className="ax-label">Next step</p>
               <p className={cn("mt-1 text-muted", daniSurface ? "max-w-2xl text-base text-foreground/75" : "text-sm")}>

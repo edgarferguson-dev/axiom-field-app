@@ -50,12 +50,20 @@ export const PRESENTATION_BEATS: PresentationBeat[] = [
   },
   {
     id: "proof",
-    slideTypes: ["proof", "interactive-proof"],
+    slideTypes: [
+      "proof",
+      "interactive-proof",
+      "proof-snapshot",
+      "mock-flow",
+      "comparison-proof",
+      "impact-stat",
+      "decision-next",
+    ],
     goal: "They believe the outcome is plausible.",
     oneLiners: [
-      "Walk me through what you would want to see.",
-      "Does this line up with what you have seen?",
-      "If true, would that change how you operate?",
+      "Point at the proof — let them narrate what they see.",
+      "Does this match a busy week for you?",
+      "If this is true, what would you change first?",
     ],
   },
   {

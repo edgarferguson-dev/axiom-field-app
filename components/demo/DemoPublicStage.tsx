@@ -16,8 +16,8 @@ export function DemoPublicStage(props: DemoPublicStageProps) {
         "rounded-2xl sm:rounded-3xl",
         "bg-surface",
         "ring-1 ring-border shadow-soft",
-        "p-1.5 sm:p-2 md:p-3",
-        "min-h-[min(58svh,640px)] lg:min-h-[min(62svh,780px)]"
+        "p-1 sm:p-2 md:p-3",
+        "min-h-[min(52svh,560px)] sm:min-h-[min(58svh,640px)] lg:min-h-[min(62svh,780px)]"
       )}
     >
       <DemoPresentationSurface {...props} hideBuyerBadge presentationScale="dani" />
