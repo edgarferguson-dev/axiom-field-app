@@ -25,6 +25,7 @@ export function normalizeScoutBusinessProfile(b: BusinessProfile): BusinessProfi
     ownerName: b.ownerName?.trim() || undefined,
     contactPhone: b.contactPhone?.trim() || undefined,
     contactEmail: b.contactEmail?.trim() || undefined,
+    directoryPlaceId: b.directoryPlaceId?.trim() || undefined,
   };
 }
 

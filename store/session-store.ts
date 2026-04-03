@@ -57,12 +57,23 @@ import {
   DEFAULT_OFFER_TEMPLATE_ID,
   type OfferTemplate,
 } from "@/types/offerTemplate";
-import type {
-  PostRunAskTiming,
-  PostRunCapture,
-  PostRunProofStrength,
-  PostRunReuseIntent,
+import {
+  coercePostRunBeatId,
+  coercePostRunCoachingCueUsed,
+  coercePostRunInteractionMinutes,
+  coercePostRunMerchantCategory,
+  coercePostRunPhoneFormFactor,
+  coercePostRunReachedAsk,
+  coercePostRunRelationship,
+  coercePostRunResult,
+  coercePostRunSurpriseNote,
+  coercePostRunWouldReuse,
+  type PostRunAskTiming,
+  type PostRunCapture,
+  type PostRunProofStrength,
+  type PostRunReuseIntent,
 } from "@/types/postRunCapture";
+import { computeLocalBusinessIdentityKey } from "@/lib/field/businessIdentity";
 import { getPresentationPackDefinition } from "@/lib/presentation/packs/registry";
 import type { SessionPresentationState } from "@/types/presentation";
 import type { PresentationSlide } from "@/lib/flows/presentationEngine";
@@ -1077,7 +1088,7 @@ export const useSessionStore = create<SessionStore>()(
     }),
     {
       name: PERSIST_KEY_SESSION,
-      version: 19,
+      version: 21,
       storage: sessionPersistStorage,
       merge: (persistedState, currentState) => {
         if (persistedState == null || typeof persistedState !== "object") {
@@ -1280,18 +1291,39 @@ export const useSessionStore = create<SessionStore>()(
               const proofOk = ps === "weak" || ps === "ok" || ps === "strong";
               const ru = c.reuseSameRun as PostRunReuseIntent | undefined;
               const reuseOk = ru === "yes" || ru === "maybe" || ru === "no";
+              const reuseResolved: PostRunReuseIntent = reuseOk ? ru! : "maybe";
+              const nameSnap = String(c.businessNameSnapshot ?? "");
+              const identityKey =
+                typeof c.identityKey === "string" && c.identityKey.trim()
+                  ? c.identityKey.trim()
+                  : computeLocalBusinessIdentityKey({ name: nameSnap });
+              const leadWith =
+                typeof c.leadWithNextVisit === "string" ? c.leadWithNextVisit.trim() : "";
               return {
                 ...c,
+                identityKey: identityKey || computeLocalBusinessIdentityKey({ name: nameSnap || "Unknown" }),
+                result: coercePostRunResult(c.result),
+                leadWithNextVisit: leadWith,
                 packLabelSnapshot: labelOk ? c.packLabelSnapshot : getPresentationPackDefinition(packId).label,
                 runOfferTemplateIdSnapshot:
                   c.runOfferTemplateIdSnapshot === undefined ? null : c.runOfferTemplateIdSnapshot,
                 askTiming: askTimingOk ? at! : "n_a",
                 proofStrength: proofOk ? ps! : "ok",
-                reuseSameRun: reuseOk ? ru! : "maybe",
+                reuseSameRun: reuseResolved,
                 strongestProofMoment:
                   typeof c.strongestProofMoment === "string" && c.strongestProofMoment.trim()
                     ? c.strongestProofMoment
                     : "—",
+                relationship: coercePostRunRelationship(c.relationship),
+                reachedAsk: coercePostRunReachedAsk(c.reachedAsk, c.askMade === true),
+                strongestBeat: coercePostRunBeatId(c.strongestBeat),
+                weakestBeat: coercePostRunBeatId(c.weakestBeat),
+                coachingCueUsed: coercePostRunCoachingCueUsed(c.coachingCueUsed),
+                surpriseNote: coercePostRunSurpriseNote(c.surpriseNote),
+                interactionMinutes: coercePostRunInteractionMinutes(c.interactionMinutes),
+                phoneFormFactor: coercePostRunPhoneFormFactor(c.phoneFormFactor),
+                wouldReuse: coercePostRunWouldReuse(c.wouldReuse, reuseResolved),
+                merchantCategory: coercePostRunMerchantCategory(c.merchantCategory),
               } as PostRunCapture;
             });
           }

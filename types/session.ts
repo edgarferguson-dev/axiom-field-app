@@ -131,6 +131,8 @@ export type BusinessProfile = {
   notes?: string;
   /** Human-readable labels from Field Snapshot + constraint chips (AI + strategy). */
   capturedConstraintLabels?: string[];
+  /** Stable id from directory / Places row when applied (local only, not a CRM id). */
+  directoryPlaceId?: string;
   /** Rep-entered lookup hints (optional; future enrichment / APIs). */
   website?: string;
   rating?: string;

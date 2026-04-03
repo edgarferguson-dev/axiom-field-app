@@ -101,6 +101,7 @@ export default function FieldReadPage({
         leadSource: session.business.leadSource,
         notes: session.business.notes,
         capturedConstraintLabels: session.business.capturedConstraintLabels,
+        directoryPlaceId: session.business.directoryPlaceId,
         website: session.business.website,
         rating: session.business.rating,
         reviewCount: session.business.reviewCount,
@@ -108,6 +109,7 @@ export default function FieldReadPage({
         social: session.business.social,
         ownerName: session.business.ownerName,
         contactPhone: session.business.contactPhone,
+        contactEmail: session.business.contactEmail,
       });
     }
     if (session.fieldSnapshot?.length) {
@@ -262,7 +264,7 @@ export default function FieldReadPage({
           description="Built for the parking lot and the lobby: lookup hints, field pressure, operational constraints — then a tight AI brief with opener, objection prep, and tablet timing before you walk in."
         />
 
-        <VisitMemoryPanel businessNameHint={form.name} />
+        <VisitMemoryPanel businessProfileHint={form} />
 
         {!intel && (
           <ScoutIntakeSection

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { useSessionStore } from "@/store/session-store";
 import { resolveActiveOfferTemplate } from "@/lib/presentation/resolveActiveOfferTemplate";
@@ -8,15 +8,23 @@ import { getPresentationPackDefinition } from "@/lib/presentation/packs/registry
 import type {
   PostRunAskTiming,
   PostRunCapture,
+  PostRunCoachingCueUsed,
+  PostRunMerchantCategory,
+  PostRunPhoneFormFactor,
   PostRunProofStrength,
+  PostRunRelationship,
   PostRunResult,
   PostRunReuseIntent,
+  PostRunWouldReuse,
 } from "@/types/postRunCapture";
+import { computeLocalBusinessIdentityKey } from "@/lib/field/businessIdentity";
 
 const RESULTS: { value: PostRunResult; label: string }[] = [
   { value: "no_interest", label: "No interest" },
-  { value: "interested", label: "Interested" },
-  { value: "follow_up", label: "Follow-up" },
+  { value: "interested_not_now", label: "Interested · not now" },
+  { value: "follow_up_needed", label: "Follow-up needed" },
+  { value: "wants_info_sent", label: "Wants info sent" },
+  { value: "book_follow_up", label: "Book follow-up" },
   { value: "soft_commit", label: "Soft commit" },
   { value: "hard_commit", label: "Hard commit" },
 ];
@@ -38,6 +46,45 @@ const ASK_TIMING: { value: PostRunAskTiming; label: string }[] = [
   { value: "on_time", label: "On time" },
   { value: "too_late", label: "Too late" },
 ];
+
+const RELATIONSHIP: { value: PostRunRelationship; label: string }[] = [
+  { value: "stranger", label: "Stranger" },
+  { value: "acquaintance", label: "Acquaintance" },
+  { value: "friend-family", label: "Friend / family" },
+];
+
+const MERCHANT_WEDGE: { value: PostRunMerchantCategory; label: string }[] = [
+  { value: "barbershop", label: "Barbershop" },
+  { value: "salon-beauty", label: "Salon / beauty" },
+  { value: "trainer-fitness", label: "Trainer / fitness" },
+  { value: "cpa-tax", label: "CPA / tax" },
+  { value: "contractor", label: "Contractor" },
+  { value: "other-merchant", label: "Other merchant" },
+];
+
+const COACHING_CUE: { value: PostRunCoachingCueUsed; label: string }[] = [
+  { value: "helped", label: "Yes, helped" },
+  { value: "wrong", label: "Yes, but wrong" },
+  { value: "ignored", label: "No, ignored them" },
+  { value: "not-needed", label: "Didn’t need them" },
+];
+
+const PHONE_FORM: { value: PostRunPhoneFormFactor; label: string }[] = [
+  { value: "fine", label: "Worked fine" },
+  { value: "awkward", label: "Awkward to hold" },
+  { value: "screen-too-small", label: "Screen too small" },
+  { value: "other", label: "Other issue" },
+];
+
+const WOULD_REUSE: { value: PostRunWouldReuse; label: string }[] = [
+  { value: "yes", label: "Yes" },
+  { value: "yes-with-changes", label: "Yes, but needs changes" },
+  { value: "no", label: "No" },
+];
+
+const INTERACTION_MINUTES: (number | "15+")[] = [1, 2, 3, 5, 10, "15+"];
+
+const WEAKEST_NA = "__na__";
 
 /** What on-screen moment drew the strongest reaction */
 const MOMENT_PRESETS = [
@@ -73,7 +120,25 @@ const OBJECTION_PRESETS = [
   "Other",
 ];
 
-const NEXT_PRESETS = ["Text tonight", "Call tomorrow", "Send terms", "Book setup", "Revisit", "None", "Other"];
+const NEXT_PRESETS = [
+  "Text tonight",
+  "Call tomorrow",
+  "Send info / link",
+  "Send terms",
+  "Book setup",
+  "Revisit",
+  "None",
+  "Other",
+];
+
+const LEAD_WITH_PRESETS = [
+  "Pick up where proof left off",
+  "Their main objection",
+  "Confirm timeframe",
+  "Deliver what you promised",
+  "Light check-in",
+  "Other",
+];
 
 function ChipRow({
   options,
@@ -107,6 +172,117 @@ function ChipRow({
   );
 }
 
+function BeatPickRow({
+  options,
+  value,
+  onPick,
+  naLabel,
+}: {
+  options: { id: string; label: string }[];
+  value: string;
+  onPick: (id: string) => void;
+  naLabel?: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onPick(o.id)}
+          className={cn(
+            "min-h-[36px] max-w-full rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-semibold transition",
+            value === o.id
+              ? "border-accent bg-accent/15 text-accent"
+              : "border-border/80 bg-card text-muted hover:border-accent/30 hover:text-foreground"
+          )}
+        >
+          <span className="line-clamp-2">{o.label}</span>
+        </button>
+      ))}
+      {naLabel ? (
+        <button
+          type="button"
+          onClick={() => onPick(WEAKEST_NA)}
+          className={cn(
+            "min-h-[36px] rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition",
+            value === WEAKEST_NA
+              ? "border-accent bg-accent/15 text-accent"
+              : "border-border/80 bg-card text-muted hover:border-accent/30 hover:text-foreground"
+          )}
+        >
+          {naLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start(): void;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((ev: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
+};
+
+function SurpriseDictateButton({
+  value,
+  onChange,
+  maxLen,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  maxLen: number;
+}) {
+  const busy = useRef(false);
+  type WinSR = Window & {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  const Ctor =
+    typeof window !== "undefined"
+      ? (window as WinSR).SpeechRecognition ?? (window as WinSR).webkitSpeechRecognition
+      : undefined;
+  if (!Ctor) return null;
+
+  return (
+    <button
+      type="button"
+      className="mt-1 rounded-lg border border-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted hover:border-accent/40 hover:text-foreground"
+      onClick={() => {
+        if (busy.current) return;
+        try {
+          const r = new Ctor();
+          busy.current = true;
+          r.lang = "en-US";
+          r.continuous = false;
+          r.interimResults = false;
+          r.onend = () => {
+            busy.current = false;
+          };
+          r.onerror = () => {
+            busy.current = false;
+          };
+          r.onresult = (ev) => {
+            const t = ev.results[0]?.[0]?.transcript?.trim() ?? "";
+            if (!t) return;
+            const spacer = value && !value.endsWith(" ") ? " " : "";
+            onChange(`${value}${spacer}${t}`.slice(0, maxLen));
+          };
+          r.start();
+        } catch {
+          busy.current = false;
+        }
+      }}
+    >
+      Dictate
+    </button>
+  );
+}
+
 /** Private visit log after a run — local persistence only. */
 export function PostRunCapturePanel() {
   const session = useSessionStore((s) => s.session);
@@ -115,6 +291,17 @@ export function PostRunCapturePanel() {
   const defaultOfferTemplateId = useSessionStore((s) => s.defaultOfferTemplateId);
 
   const [open, setOpen] = useState(false);
+  const [relationship, setRelationship] = useState<PostRunRelationship | "">("");
+  const [reachedAsk, setReachedAsk] = useState<boolean | null>(null);
+  const [strongestBeatId, setStrongestBeatId] = useState("");
+  const [weakestBeatId, setWeakestBeatId] = useState("");
+  const [coachingCueUsed, setCoachingCueUsed] = useState<PostRunCoachingCueUsed | "">("");
+  const [surpriseNote, setSurpriseNote] = useState("");
+  const [interactionMinutes, setInteractionMinutes] = useState<number | null>(null);
+  const [phoneFormFactor, setPhoneFormFactor] = useState<PostRunPhoneFormFactor | "">("");
+  const [wouldReuse, setWouldReuse] = useState<PostRunWouldReuse | "">("");
+  const [merchantCategory, setMerchantCategory] = useState<PostRunMerchantCategory | "">("");
+
   const [result, setResult] = useState<PostRunResult | "">("");
   const [proofStrength, setProofStrength] = useState<PostRunProofStrength | "">("");
   const [strongestMoment, setStrongestMoment] = useState("");
@@ -124,6 +311,7 @@ export function PostRunCapturePanel() {
   const [askTiming, setAskTiming] = useState<PostRunAskTiming | "">("");
   const [reuseSameRun, setReuseSameRun] = useState<PostRunReuseIntent | "">("");
   const [nextStep, setNextStep] = useState("");
+  const [leadWithNext, setLeadWithNext] = useState("");
   const [notes, setNotes] = useState("");
 
   const offer = useMemo(
@@ -139,7 +327,25 @@ export function PostRunCapturePanel() {
   const pres = session?.presentation;
   const packDef = useMemo(() => getPresentationPackDefinition(pres?.packId), [pres?.packId]);
 
+  const beatOptions = useMemo(() => {
+    const blocks = session?.proofSequence?.blocks ?? [];
+    return blocks.map((b) => ({
+      id: b.id,
+      label: (b.title?.trim() || b.id).slice(0, 80),
+    }));
+  }, [session?.proofSequence?.blocks]);
+
   const reset = useCallback(() => {
+    setRelationship("");
+    setReachedAsk(null);
+    setStrongestBeatId("");
+    setWeakestBeatId("");
+    setCoachingCueUsed("");
+    setSurpriseNote("");
+    setInteractionMinutes(null);
+    setPhoneFormFactor("");
+    setWouldReuse("");
+    setMerchantCategory("");
     setResult("");
     setProofStrength("");
     setStrongestMoment("");
@@ -149,11 +355,15 @@ export function PostRunCapturePanel() {
     setAskTiming("");
     setReuseSameRun("");
     setNextStep("");
+    setLeadWithNext("");
     setNotes("");
   }, []);
 
   const canSave = Boolean(
-    result &&
+    relationship &&
+      reachedAsk !== null &&
+      wouldReuse &&
+      result &&
       proofStrength &&
       reuseSameRun &&
       askMade !== null &&
@@ -164,15 +374,40 @@ export function PostRunCapturePanel() {
   );
 
   const save = useCallback(() => {
-    if (!session?.id || !canSave || !proofStrength || !reuseSameRun || !result || askMade === null) return;
-    const resolvedAskTiming: PostRunAskTiming = askMade
-      ? (askTiming as PostRunAskTiming)
-      : "n_a";
+    if (
+      !session?.id ||
+      !canSave ||
+      !proofStrength ||
+      !reuseSameRun ||
+      !result ||
+      askMade === null ||
+      !relationship ||
+      reachedAsk === null ||
+      !wouldReuse
+    )
+      return;
+    const resolvedAskTiming: PostRunAskTiming = askMade ? (askTiming as PostRunAskTiming) : "n_a";
+
+    const biz = session.business;
+    const strongestBeat =
+      beatOptions.length && strongestBeatId.trim() ? strongestBeatId.trim() : null;
+    const weakestBeat =
+      !beatOptions.length
+        ? null
+        : weakestBeatId === WEAKEST_NA || !weakestBeatId.trim()
+          ? null
+          : weakestBeatId.trim();
 
     const row: Omit<PostRunCapture, "id" | "capturedAt"> = {
       sessionId: session.id,
-      businessNameSnapshot: session.business?.name?.trim() || "Unknown",
-      businessTypeSnapshot: session.business?.type?.trim() || undefined,
+      identityKey:
+        computeLocalBusinessIdentityKey(biz ?? {}) ||
+        computeLocalBusinessIdentityKey({
+          name: biz?.name?.trim() || "Unknown",
+        }),
+      businessNameSnapshot: biz?.name?.trim() || "Unknown",
+      businessTypeSnapshot: biz?.type?.trim() || undefined,
+      merchantCategory: merchantCategory === "" ? null : merchantCategory,
       packId: pres?.packId ?? "—",
       packLabelSnapshot: packDef.label,
       openingMode: pres?.openingMode ?? "proof-snapshot",
@@ -188,7 +423,17 @@ export function PostRunCapturePanel() {
       strongestProofMoment: strongestMoment.trim() || "—",
       primaryObjection: objection.trim() || "—",
       nextStepNeeded: nextStep.trim() || "—",
+      leadWithNextVisit: leadWithNext.trim() || "—",
       notes: notes.trim(),
+      relationship,
+      reachedAsk,
+      strongestBeat,
+      weakestBeat,
+      coachingCueUsed: coachingCueUsed === "" ? null : coachingCueUsed,
+      surpriseNote: surpriseNote.trim() ? surpriseNote.trim().slice(0, 500) : null,
+      interactionMinutes,
+      phoneFormFactor: phoneFormFactor === "" ? null : phoneFormFactor,
+      wouldReuse,
     };
     addPostRunCapture(row);
     reset();
@@ -205,6 +450,7 @@ export function PostRunCapturePanel() {
     strongestMoment,
     objection,
     nextStep,
+    leadWithNext,
     notes,
     pres?.packId,
     pres?.openingMode,
@@ -213,6 +459,17 @@ export function PostRunCapturePanel() {
     offer,
     addPostRunCapture,
     reset,
+    relationship,
+    reachedAsk,
+    strongestBeatId,
+    weakestBeatId,
+    coachingCueUsed,
+    surpriseNote,
+    interactionMinutes,
+    phoneFormFactor,
+    wouldReuse,
+    merchantCategory,
+    beatOptions.length,
   ]);
 
   if (!session) return null;
@@ -243,6 +500,212 @@ export function PostRunCapturePanel() {
             <span className="text-border"> · </span>
             <span>{offer.label}</span>
           </p>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Relationship</p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {RELATIONSHIP.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => setRelationship(r.value)}
+                  className={cn(
+                    "min-h-[40px] rounded-lg border px-2.5 py-2 text-[11px] font-semibold",
+                    relationship === r.value
+                      ? "border-accent bg-accent/12 text-accent"
+                      : "border-border bg-surface text-foreground"
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Did you reach the ask?</p>
+            <div className="mt-1.5 flex gap-2">
+              {(["yes", "no"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setReachedAsk(v === "yes")}
+                  className={cn(
+                    "min-h-[44px] flex-1 rounded-xl border text-sm font-bold capitalize",
+                    reachedAsk === (v === "yes")
+                      ? "border-accent bg-accent/12 text-accent"
+                      : "border-border bg-card text-muted"
+                  )}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              Which beat got the best reaction?
+            </p>
+            {beatOptions.length ? (
+              <div className="mt-1.5">
+                <BeatPickRow
+                  options={beatOptions}
+                  value={strongestBeatId}
+                  onPick={(id) => setStrongestBeatId((cur) => (cur === id ? "" : id))}
+                />
+              </div>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-muted">No beat list in this session yet — leave blank.</p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              Which beat fell flat or got skipped?
+            </p>
+            {beatOptions.length ? (
+              <div className="mt-1.5">
+                <BeatPickRow
+                  options={beatOptions}
+                  value={weakestBeatId}
+                  onPick={(id) => setWeakestBeatId((cur) => (cur === id ? "" : id))}
+                  naLabel="N/A"
+                />
+              </div>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-muted">No beat list in this session yet — leave blank.</p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Did coaching cues help?</p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {COACHING_CUE.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setCoachingCueUsed((cur) => (cur === c.value ? "" : c.value))}
+                  className={cn(
+                    "min-h-[40px] rounded-lg border px-2 py-2 text-[10px] font-semibold leading-tight",
+                    coachingCueUsed === c.value
+                      ? "border-accent bg-accent/12 text-accent"
+                      : "border-border bg-surface text-foreground"
+                  )}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted">What surprised you?</span>
+            <textarea
+              className="mt-1 min-h-[4.5rem] w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
+              placeholder="Anything unexpected — what the owner said, how they reacted, what you wish you had…"
+              value={surpriseNote}
+              onChange={(e) => setSurpriseNote(e.target.value.slice(0, 500))}
+              maxLength={500}
+            />
+            <SurpriseDictateButton value={surpriseNote} onChange={setSurpriseNote} maxLen={500} />
+          </label>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              About how long? (minutes)
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {INTERACTION_MINUTES.map((m) => {
+                const val = m === "15+" ? 15 : m;
+                const label = m === "15+" ? "15+" : String(m);
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setInteractionMinutes((cur) => (cur === val ? null : val))}
+                    className={cn(
+                      "min-h-[40px] min-w-[2.5rem] rounded-lg border px-2.5 py-2 text-[11px] font-semibold",
+                      interactionMinutes === val
+                        ? "border-accent bg-accent/12 text-accent"
+                        : "border-border bg-card text-muted"
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              How did the phone work in the room?
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {PHONE_FORM.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setPhoneFormFactor((cur) => (cur === p.value ? "" : p.value))}
+                  className={cn(
+                    "min-h-[40px] rounded-lg border px-2 py-2 text-[10px] font-semibold leading-tight",
+                    phoneFormFactor === p.value
+                      ? "border-accent bg-accent/12 text-accent"
+                      : "border-border bg-surface text-foreground"
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              Would you use the app again for your next visit?
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {WOULD_REUSE.map((w) => (
+                <button
+                  key={w.value}
+                  type="button"
+                  onClick={() => setWouldReuse(w.value)}
+                  className={cn(
+                    "min-h-[40px] flex-1 rounded-lg border px-2 py-2 text-[10px] font-semibold leading-tight sm:flex-none sm:px-3",
+                    wouldReuse === w.value
+                      ? "border-accent bg-accent/12 text-accent"
+                      : "border-border bg-card text-muted"
+                  )}
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              Merchant type (report, optional)
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {MERCHANT_WEDGE.map((m) => (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => setMerchantCategory((cur) => (cur === m.value ? "" : m.value))}
+                  className={cn(
+                    "min-h-[36px] rounded-lg border px-2 py-1.5 text-[10px] font-semibold",
+                    merchantCategory === m.value
+                      ? "border-accent bg-accent/12 text-accent"
+                      : "border-border bg-card text-muted"
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Outcome</p>
@@ -370,8 +833,13 @@ export function PostRunCapturePanel() {
           </div>
 
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Follow-up motion</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Next step (expected)</p>
             <ChipRow options={NEXT_PRESETS} value={nextStep} onPick={setNextStep} compact />
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Lead with next visit</p>
+            <ChipRow options={LEAD_WITH_PRESETS} value={leadWithNext} onPick={setLeadWithNext} compact />
           </div>
 
           <label className="block">

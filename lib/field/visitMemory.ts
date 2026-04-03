@@ -1,17 +1,19 @@
+import type { BusinessProfile } from "@/types/session";
 import type { PostRunCapture, PostRunResult } from "@/types/postRunCapture";
+import {
+  captureMatchesBusinessProfile,
+  computeLocalBusinessIdentityKey,
+  normalizeVisitBusinessKey,
+} from "@/lib/field/businessIdentity";
 
-/** Normalize business name for matching visit logs (local only). */
-export function normalizeVisitBusinessKey(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-}
+export { normalizeVisitBusinessKey } from "@/lib/field/businessIdentity";
 
 export const POST_RUN_RESULT_LABEL: Record<PostRunResult, string> = {
   no_interest: "No interest",
-  interested: "Interested",
-  follow_up: "Follow-up",
+  interested_not_now: "Interested · not now",
+  follow_up_needed: "Follow-up needed",
+  wants_info_sent: "Wants info sent",
+  book_follow_up: "Book follow-up",
   soft_commit: "Soft commit",
   hard_commit: "Hard commit",
 };
@@ -26,14 +28,23 @@ export function formatVisitDate(iso: string): string {
   }
 }
 
-export function lastVisitForBusiness(
+export function hasMinVisitMemoryHint(profile: Partial<BusinessProfile>): boolean {
+  return (
+    normalizeVisitBusinessKey(profile.name ?? "").length >= 2 ||
+    Boolean(computeLocalBusinessIdentityKey(profile))
+  );
+}
+
+/** Newest matching capture for this business (identity-aware, local only). */
+export function lastVisitForBusinessProfile(
   captures: PostRunCapture[],
-  businessName: string
+  profile: Partial<BusinessProfile>
 ): PostRunCapture | null {
-  const key = normalizeVisitBusinessKey(businessName);
-  if (!key) return null;
+  const key = computeLocalBusinessIdentityKey(profile);
+  const nameOk = normalizeVisitBusinessKey(profile.name ?? "").length >= 2;
+  if (!key && !nameOk) return null;
   for (const c of captures) {
-    if (normalizeVisitBusinessKey(c.businessNameSnapshot) === key) return c;
+    if (captureMatchesBusinessProfile(c, profile)) return c;
   }
   return null;
 }
@@ -41,6 +52,40 @@ export function lastVisitForBusiness(
 /** Deterministic next-visit cues from one capture — no scoring engine. */
 export function nextVisitGuidanceLines(c: PostRunCapture): string[] {
   const lines: string[] = [];
+
+  switch (c.result) {
+    case "no_interest":
+      lines.push("Last outcome: no interest — only re-engage if something clearly changed.");
+      break;
+    case "interested_not_now":
+      lines.push("They were interested but not ready — keep proof tight; confirm timing.");
+      break;
+    case "follow_up_needed":
+      lines.push("Follow-up was needed — open with the thread you left, not a fresh pitch.");
+      break;
+    case "wants_info_sent":
+      lines.push("They wanted materials — lead with what you sent and one proof beat.");
+      break;
+    case "book_follow_up":
+      lines.push("Next step was a booked return — confirm the time and the promise.");
+      break;
+    case "soft_commit":
+      lines.push("Soft commit last time — tighten scope and confirm the next concrete step.");
+      break;
+    case "hard_commit":
+      lines.push("Hard commit logged — execute onboarding; proof stays support, not re-sell.");
+      break;
+  }
+
+  const next = c.nextStepNeeded.trim();
+  if (next && next !== "—" && next !== "None") {
+    lines.push(`Expected next step: ${next}.`);
+  }
+
+  const lead = (c.leadWithNextVisit ?? "").trim();
+  if (lead && lead !== "—" && lead !== "Other") {
+    lines.push(`Lead with: ${lead}.`);
+  }
 
   if (c.reuseSameRun === "yes") {
     lines.push("Same proof run worked last time — repeat unless the room clearly changed.");
@@ -78,5 +123,5 @@ export function nextVisitGuidanceLines(c: PostRunCapture): string[] {
     lines.push(`You said to change: ${note}`);
   }
 
-  return lines.slice(0, 4);
+  return lines.slice(0, 6);
 }

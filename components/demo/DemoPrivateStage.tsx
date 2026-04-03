@@ -63,7 +63,8 @@ export function DemoPrivateStage() {
   const setPresentationRunOfferTemplateId = useSessionStore((s) => s.setPresentationRunOfferTemplateId);
   const slides = useSessionStore((s) => s.session?.presentation?.generatedSlides);
   const activeSlideIndex = useSessionStore((s) => s.session?.presentation?.activeSlideIndex ?? 0);
-  const businessName = useSessionStore((s) => s.session?.business?.name ?? "");
+  const businessProfile = useSessionStore((s) => s.session?.business ?? null);
+  const businessName = businessProfile?.name ?? "";
 
   const merchantProofBeat = useMemo(() => {
     if (!slides?.length) return null;
@@ -99,7 +100,7 @@ export function DemoPrivateStage() {
 
       <CloseRecommendationPanel />
 
-      <VisitMemoryPanel businessNameHint={businessName} compact />
+      <VisitMemoryPanel businessProfileHint={businessProfile ?? { name: businessName }} compact />
 
       <PostRunCapturePanel />
 

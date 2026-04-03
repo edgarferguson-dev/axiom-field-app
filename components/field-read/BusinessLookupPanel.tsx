@@ -76,6 +76,7 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
             website: merged.website,
             rating: merged.rating,
             reviewCount: merged.reviewCount,
+            directoryPlaceId: merged.directoryPlaceId,
           };
           onChange(patch);
         }

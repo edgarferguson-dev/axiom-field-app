@@ -3,17 +3,20 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { useSessionStore } from "@/store/session-store";
+import type { BusinessProfile } from "@/types/session";
 import type { PostRunCapture } from "@/types/postRunCapture";
 import {
   formatVisitDate,
-  lastVisitForBusiness,
+  hasMinVisitMemoryHint,
+  lastVisitForBusinessProfile,
   nextVisitGuidanceLines,
-  normalizeVisitBusinessKey,
   POST_RUN_RESULT_LABEL,
 } from "@/lib/field/visitMemory";
 
 function VisitCard({ c, dense }: { c: PostRunCapture; dense?: boolean }) {
   const date = formatVisitDate(c.capturedAt);
+  const next = c.nextStepNeeded.trim();
+  const lead = c.leadWithNextVisit.trim();
   return (
     <div
       className={cn(
@@ -36,6 +39,18 @@ function VisitCard({ c, dense }: { c: PostRunCapture; dense?: boolean }) {
         <span>{POST_RUN_RESULT_LABEL[c.result]}</span>
       </p>
       <dl className="mt-2 grid gap-1 text-[11px] text-muted">
+        {next && next !== "—" && next !== "None" ? (
+          <div className="flex flex-wrap gap-x-1">
+            <dt className="font-semibold text-foreground/70">Next step</dt>
+            <dd className="text-foreground/85">{next}</dd>
+          </div>
+        ) : null}
+        {lead && lead !== "—" && lead !== "Other" ? (
+          <div className="flex flex-wrap gap-x-1">
+            <dt className="font-semibold text-foreground/70">Lead with</dt>
+            <dd className="text-foreground/85">{lead}</dd>
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-x-1">
           <dt className="font-semibold text-foreground/70">Reaction</dt>
           <dd>{c.strongestOwnerReaction}</dd>
@@ -64,7 +79,7 @@ function VisitCard({ c, dense }: { c: PostRunCapture; dense?: boolean }) {
         </div>
         {c.notes.trim() ? (
           <div className="flex flex-wrap gap-x-1">
-            <dt className="font-semibold text-foreground/70">Next time</dt>
+            <dt className="font-semibold text-foreground/70">Change next time</dt>
             <dd className="text-foreground/85">{c.notes.trim()}</dd>
           </div>
         ) : null}
@@ -74,8 +89,8 @@ function VisitCard({ c, dense }: { c: PostRunCapture; dense?: boolean }) {
 }
 
 type VisitMemoryPanelProps = {
-  /** Current form or session business name — used to match last visit */
-  businessNameHint: string;
+  /** Current scout form or session business — used for identity-aware last visit. */
+  businessProfileHint: Partial<BusinessProfile>;
   /** Max rows in recent list */
   recentLimit?: number;
   /** Tighter spacing on demo private rail */
@@ -87,7 +102,7 @@ type VisitMemoryPanelProps = {
  * Rep-facing only — not shown on public demo.
  */
 export function VisitMemoryPanel({
-  businessNameHint,
+  businessProfileHint,
   recentLimit = 8,
   compact,
 }: VisitMemoryPanelProps) {
@@ -95,14 +110,13 @@ export function VisitMemoryPanel({
   const [recentOpen, setRecentOpen] = useState(false);
 
   const lastHere = useMemo(
-    () => lastVisitForBusiness(captures, businessNameHint),
-    [captures, businessNameHint]
+    () => lastVisitForBusinessProfile(captures, businessProfileHint),
+    [captures, businessProfileHint]
   );
 
   const recent = useMemo(() => captures.slice(0, recentLimit), [captures, recentLimit]);
 
-  const showLastBlock =
-    !!lastHere && normalizeVisitBusinessKey(businessNameHint).length >= 2;
+  const showLastBlock = !!lastHere && hasMinVisitMemoryHint(businessProfileHint);
 
   /** Avoid duplicating the “last here” card in the global recent list. */
   const recentToList = useMemo(() => {
@@ -147,9 +161,9 @@ export function VisitMemoryPanel({
             </div>
           ) : null}
         </div>
-      ) : normalizeVisitBusinessKey(businessNameHint).length >= 2 ? (
+      ) : hasMinVisitMemoryHint(businessProfileHint) ? (
         <p className="mt-3 border-t border-border/50 pt-3 text-[11px] text-muted">
-          No saved visit for this business name yet — log one after your run.
+          No saved visit for this business yet — log one after your run.
         </p>
       ) : null}
 

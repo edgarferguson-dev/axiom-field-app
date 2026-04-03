@@ -22,5 +22,6 @@ export function matchToPrefill(
     rating: match.rating != null ? String(match.rating) : undefined,
     reviewCount: match.reviewCount != null ? String(match.reviewCount) : undefined,
     type: typeMatch ?? "",
+    directoryPlaceId: match.placeId?.trim() || undefined,
   };
 }
