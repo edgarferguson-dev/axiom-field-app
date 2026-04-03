@@ -4,22 +4,48 @@ import { useEffect, useState } from "react";
 import { useSessionStore } from "@/store/session-store";
 
 /**
- * True after Zustand persist has rehydrated from storage.
+ * True when the client may render UI that reads persisted session state.
  *
- * Initial state is always `false` on the server and on the client's first paint.
- * Reading `hasHydrated()` only inside `useEffect` avoids SSR/client HTML mismatch
- * (otherwise the client can render the loaded shell while the server sent "loading",
- * which triggers React hydration errors and Next.js "Application error: client-side exception").
+ * Server and first paint: always `false` (avoids SSR/client HTML mismatch).
+ *
+ * **Fail-open:** Zustand’s `persist` does not set `hasHydrated` or call
+ * `onFinishHydration` when `hydrate()` rejects (e.g. corrupt JSON in storage).
+ * We also schedule the fail-open timer *before* touching `persist` APIs so a
+ * synchronous throw from `hasHydrated` / `onFinishHydration` cannot skip the
+ * timer — otherwise session routes stay on “Loading session…” forever.
  */
 export function useSessionStoreHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (useSessionStore.persist.hasHydrated()) {
-      setHydrated(true);
-      return;
+    const done = () => setHydrated(true);
+    let unsub: (() => void) | undefined;
+
+    const failOpenMs = 800;
+    const timer =
+      typeof window !== "undefined" ? window.setTimeout(done, failOpenMs) : undefined;
+
+    try {
+      const persistApi = useSessionStore.persist;
+      if (persistApi?.hasHydrated?.()) {
+        done();
+      } else if (persistApi) {
+        unsub = persistApi.onFinishHydration?.(done);
+      } else {
+        done();
+      }
+    } catch {
+      done();
     }
-    return useSessionStore.persist.onFinishHydration(() => setHydrated(true));
+
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      try {
+        unsub?.();
+      } catch {
+        /* ignore */
+      }
+    };
   }, []);
 
   return hydrated;

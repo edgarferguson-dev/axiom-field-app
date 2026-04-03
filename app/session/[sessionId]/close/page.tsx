@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { SessionStageShell } from "@/components/session/SessionStageShell";
 import { CloseStageSurface } from "@/components/close/CloseStageSurface";
 import { useSessionStore } from "@/store/session-store";
+
+const getSessionBusiness = () => useSessionStore.getState().session?.business;
 import { useSessionPhase } from "@/hooks/useSessionPhase";
 import { buildCloseOutcome } from "@/lib/close/buildCloseOutcome";
 import type { CloseOutcomeType } from "@/types/session";
@@ -31,7 +33,7 @@ export default function ClosePage({
 
   useSessionPhase("closing");
 
-  const handleFinalize = useCallback(() => {
+  const handleFinalize = useCallback(async () => {
     const outcome = buildCloseOutcome({
       selected,
       packageSelected,
@@ -47,6 +49,26 @@ export default function ClosePage({
     setCloseOutcome(outcome);
     markCompleted();
     setPhase("disposition");
+
+    const b = getSessionBusiness();
+    if (b) {
+      void fetch("/api/integrations/crm/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: b.contactEmail,
+          phone: b.contactPhone,
+          companyName: b.name,
+          firstName: b.ownerName?.split(/\s+/)[0],
+          lastName: b.ownerName?.split(/\s+/).slice(1).join(" "),
+          address: b.address,
+          website: b.website,
+          category: b.type,
+          note: notes.trim() || undefined,
+        }),
+      }).catch(() => {});
+    }
+
     router.push(`/session/${params.sessionId}/disposition`);
   }, [
     selected,

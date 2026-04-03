@@ -7,22 +7,28 @@ export type DemoPresentationCallbackDeps = {
   addObjection: (objection: ObjectionType) => void;
   addSalesStep: (step: SalesStep) => void;
   addCoachingPrompt: (prompt: CoachingPrompt) => void;
+  /** Syncs live deal signal for Command Mode + private column UI */
+  setDealSignal?: (signal: Signal) => void;
 };
 
 /**
  * Stable handlers for `PresentationEngine` demo wiring — same behavior as inline lambdas on the demo page.
  */
 export function createDemoPresentationCallbacks(deps: DemoPresentationCallbackDeps) {
-  const { addSignal, addObjection, addSalesStep, addCoachingPrompt } = deps;
+  const { addSignal, addObjection, addSalesStep, addCoachingPrompt, setDealSignal } = deps;
+
+  const sync = (signal: Signal) => {
+    addSignal(signal);
+    setDealSignal?.(signal);
+  };
 
   return {
-    onInteractiveProofMilestone: () => addSignal("green"),
-    onPricingAccept: () => addSignal("green"),
-    onOpenAccount: () => addSignal("green"),
+    onInteractiveProofMilestone: () => sync("green"),
+    onPricingAccept: () => sync("green"),
     onHesitate: () => {
       addObjection("price");
       addSalesStep(resolveObjection("price"));
-      addSignal("yellow");
+      sync("yellow");
     },
     onReject: () => addCoachingPrompt(buildPricingRejectCoachingPrompt()),
   };

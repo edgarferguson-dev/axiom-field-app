@@ -12,125 +12,98 @@ type InteractiveProofProps = {
   onDispatch: (event: InteractiveDemoEvent) => void;
 };
 
+/**
+ * Single-column proof sequence — evidence, not a product playground.
+ */
 export function InteractiveProof({ state, onDispatch }: InteractiveProofProps) {
   const status = useMemo(() => {
     if (state.step === "phone") return { label: "Ready", tone: "text-muted" };
-    if (state.step === "sending") return { label: "Sending…", tone: "text-signal-yellow" };
-    if (state.step === "ai-reply") return { label: "AI reply", tone: "text-signal-green" };
-    if (state.step === "scheduling") return { label: "Scheduling", tone: "text-signal-green" };
-    return { label: "Confirmed", tone: "text-signal-green" };
+    if (state.step === "sending") return { label: "Sending", tone: "text-signal-yellow" };
+    if (state.step === "ai-reply") return { label: "Response", tone: "text-foreground" };
+    if (state.step === "scheduling") return { label: "Scheduling", tone: "text-foreground" };
+    return { label: "Complete", tone: "text-signal-green" };
   }, [state.step]);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-            Live walkthrough
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            Simulation only — connects to your stack in a later release.
-          </p>
-        </div>
-        <span className={cn("text-xs font-semibold", status.tone)}>{status.label}</span>
+    <div className="mx-auto max-w-xl space-y-6">
+      <div className="flex items-center justify-between gap-3 border-b border-border/50 pb-3">
+        <p className="ax-label">Sequence</p>
+        <span className={cn("text-xs font-medium tabular-nums", status.tone)}>{status.label}</span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-xs font-semibold text-foreground">Widget</div>
-            <div className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] text-muted">
-              Preview
-            </div>
-          </div>
-
-          <label className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-            Phone number
-          </label>
-          <input
-            value={state.phone}
-            onChange={(e) => onDispatch({ type: "SET_PHONE", phone: e.target.value })}
-            disabled={state.step !== "phone"}
-            placeholder="(555) 123-4567"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 transition disabled:opacity-60"
-          />
-
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => onDispatch({ type: "START" })}
-              disabled={state.step !== "phone" || !state.phone.trim()}
-              className={cn(
-                "flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-glow transition",
-                "hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-              )}
-            >
-              Start
-            </button>
-            <button
-              type="button"
-              onClick={() => onDispatch({ type: "RESET" })}
-              className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium text-muted transition hover:border-accent/40 hover:text-foreground"
-            >
-              Reset
-            </button>
-          </div>
-
-          <div className="mt-4 rounded-xl border border-border bg-card p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted">
-              Booking
-            </div>
-            <div className="mt-1 text-xs text-foreground">
-              {state.booking ? `${state.booking.dateLabel} · ${state.booking.timeLabel}` : "—"}
-            </div>
-          </div>
+      <div className="space-y-3">
+        <label className="block ax-label">Customer phone</label>
+        <input
+          value={state.phone}
+          onChange={(e) => onDispatch({ type: "SET_PHONE", phone: e.target.value })}
+          disabled={state.step !== "phone"}
+          placeholder="(555) 123-4567"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/15 disabled:opacity-50"
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onDispatch({ type: "START" })}
+            disabled={state.step !== "phone" || !state.phone.trim()}
+            className={cn(
+              "min-h-[44px] flex-1 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-soft transition",
+              "hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            )}
+          >
+            Run sequence
+          </button>
+          <button
+            type="button"
+            onClick={() => onDispatch({ type: "RESET" })}
+            className="rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-muted transition hover:border-accent/30 hover:text-foreground"
+          >
+            Reset
+          </button>
         </div>
+      </div>
 
-        <div className="rounded-2xl border border-border bg-surface p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-xs font-semibold text-foreground">Conversation</div>
-            <button
-              type="button"
-              onClick={() => onDispatch({ type: "ADVANCE" })}
-              disabled={!["sending", "ai-reply", "scheduling"].includes(state.step)}
-              className="rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-semibold text-accent transition hover:bg-accent/20 disabled:opacity-40"
-            >
-              Next step →
-            </button>
-          </div>
-
-          {state.transcript.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted">
-              Start the demo to generate a realistic interaction.
+      {state.transcript.length > 0 && (
+        <div className="space-y-0 divide-y divide-border/60 rounded-lg border border-border/80 bg-background/50">
+          {state.transcript.map((m, i) => (
+            <div key={i} className="px-4 py-3 text-sm leading-relaxed text-foreground">
+              <span className="text-xs font-medium text-muted">
+                {m.from === "ai" ? "System" : "Contact"}
+                {" · "}
+              </span>
+              {m.text}
             </div>
+          ))}
+        </div>
+      )}
+
+      {state.transcript.length === 0 && state.step === "phone" && (
+        <p className="text-center text-xs text-muted">Run the sequence to show a realistic exchange.</p>
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-sm text-foreground">
+          <span className="text-muted">Booking: </span>
+          {state.booking ? (
+            <span className="font-medium">{`${state.booking.dateLabel} · ${state.booking.timeLabel}`}</span>
           ) : (
-            <div className="space-y-2">
-              {state.transcript.map((m, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "rounded-xl border px-3 py-2 text-xs leading-relaxed",
-                    m.from === "ai"
-                      ? "border-accent/20 bg-accent/5 text-foreground"
-                      : "border-border bg-card text-foreground/90"
-                  )}
-                >
-                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
-                    {m.from === "ai" ? "Assistant" : "Contact"}
-                  </div>
-                  {m.text}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {state.step === "confirmed" && (
-            <div className="mt-3 rounded-xl border border-signal-green/20 bg-signal-green/10 px-3 py-2 text-xs text-signal-green">
-              Booking confirmed — ready for the next step.
-            </div>
+            <span className="text-muted">—</span>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => onDispatch({ type: "ADVANCE" })}
+          disabled={!["sending", "ai-reply", "scheduling"].includes(state.step)}
+          className="rounded-lg border border-accent/35 bg-accent/[0.06] px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent/10 disabled:opacity-35"
+        >
+          Next beat
+        </button>
       </div>
+
+      {state.step === "confirmed" && (
+        <p className="rounded-lg border border-signal-green/25 bg-emerald-50/60 px-4 py-3 text-sm text-foreground">
+          <span className="font-medium text-signal-green">Confirmed.</span> Move on when the buyer agrees this outcome is what they want.
+        </p>
+      )}
     </div>
   );
 }

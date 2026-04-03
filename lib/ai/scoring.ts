@@ -30,6 +30,12 @@ Rep's Notes: ${session.repNotes || "No notes taken"}
 Scout diagnosis (labels): ${session.business?.capturedConstraintLabels?.join("; ") || "None captured"}
 Field snapshot keys: ${session.fieldSnapshot?.length ? session.fieldSnapshot.join(", ") : "None"}
 Operational constraints: ${session.constraints?.map((c) => `${c.key}:${c.severity}`).join("; ") || "None"}
+Pre-call engagement gate: ${
+  session.fieldEngagementDecision
+    ? `${session.fieldEngagementDecision.decision} (${session.fieldEngagementDecision.confidence}%) — angle: ${session.fieldEngagementDecision.primaryAngle}`
+    : "Not captured"
+}
+Guided demo close: state=${session.closeState ?? "n/a"}, primaryCTA=${session.primaryCTA ?? "n/a"}, objection interrupt used=${session.objectionTriggered ? "yes" : "no"}
 Pre-Call Intel Was Generated: ${session.preCallIntel ? "Yes" : "No"}
 Coaching Signal History: ${session.coachingPrompts.map((p) => p.signal).join(", ") || "None"}
 

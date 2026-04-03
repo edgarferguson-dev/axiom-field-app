@@ -73,7 +73,12 @@ export type CloseOutcomeType =
   | "need-decision-maker"
   | "follow-up-later"
   | "not-interested"
-  | "not-a-fit";
+  | "not-a-fit"
+  /** V1 disposition-aligned */
+  | "follow-up-booked"
+  | "interested-not-ready"
+  | "price-objection"
+  | "not-qualified";
 
 export type CloseOutcome = {
   type: CloseOutcomeType;
@@ -105,6 +110,7 @@ export type BusinessProfile = {
   social?: string;
   ownerName?: string;
   contactPhone?: string;
+  contactEmail?: string;
 };
 
 // ── AI output shapes ───────────────────────────────────────────────────────
@@ -114,6 +120,25 @@ export type TabletGuidance = "now" | "later" | "either";
 
 /** Recommended engagement mode for first contact */
 export type ChannelMode = "phone-first" | "verbal-first" | "tablet-first";
+
+/** Deterministic pre-brief gate (Go / Soft-Go / Walk) — computed before StrategyBrief / pre-call AI. */
+export type FieldEngagementDecision = {
+  decision: "GO" | "SOFT_GO" | "WALK";
+  confidence: number;
+  reason: string;
+  primaryAngle: string;
+};
+
+/** Guided demo close — exactly five steps, no extensions */
+export type DemoCloseState = "hook" | "pain" | "proof" | "ask" | "close";
+
+export const DEMO_CLOSE_STATES: readonly DemoCloseState[] = [
+  "hook",
+  "pain",
+  "proof",
+  "ask",
+  "close",
+] as const;
 
 export type PreCallIntel = {
   painPattern: string;
@@ -136,6 +161,12 @@ export type CoachingPrompt = {
   id: string;
   phase?: SessionPhase;
   signal: SignalColor;
+  /** Optional: first line to open with (if different from audioCue) */
+  openWith?: string;
+  /** Optional: what not to lead with */
+  avoidLead?: string;
+  /** Optional: when to show the device */
+  device?: "now" | "later";
   audioCue: string;
   nextMove: string;
   buySignal?: string;
@@ -172,6 +203,15 @@ export type Session = {
   phase: SessionPhase;
   business: BusinessProfile | null;
   preCallIntel: PreCallIntel | null;
+  /** Go / No-Go gate from constraints + industry — before strategy brief. */
+  fieldEngagementDecision: FieldEngagementDecision | null;
+  /** Live demo guided close rail — single source of truth for progression */
+  closeState: DemoCloseState | null;
+  /** CTA lines from `computeCloseCTAs` — persisted for disposition / recap */
+  primaryCTA: string | null;
+  backupCTA: string | null;
+  /** Objection interrupt overlay was opened this session */
+  objectionTriggered: boolean;
   /** On-site context captured on scout (first session page). */
   fieldSnapshot: FieldSnapshotKey[];
   constraints: BusinessConstraint[];
@@ -183,6 +223,8 @@ export type Session = {
   score: PerformanceScore | null;
   /** Buyer presentation / proof / pricing milestones */
   presentation: SessionPresentationState;
+  /** Highest session-flow step (1–5) the rep has reached; drives loop-back nav. */
+  flowMaxStep: number;
   signals: Signal[];
   objections: ObjectionType[];
   salesSteps: SalesStep[];

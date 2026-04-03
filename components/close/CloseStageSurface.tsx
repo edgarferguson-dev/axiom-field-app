@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils/cn";
+import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import type { CloseOutcomeType } from "@/types/session";
 import {
   CLOSE_OUTCOMES,
@@ -32,6 +33,9 @@ export type CloseStageSurfaceProps = {
   onFinalize: () => void;
 };
 
+/**
+ * Commitment capture — calm, decisive, not a generic form dump.
+ */
 export function CloseStageSurface({
   businessName,
   selected,
@@ -54,16 +58,21 @@ export function CloseStageSurface({
   onFinalize,
 }: CloseStageSurfaceProps) {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Phase 5 · Close</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">What happened?</h2>
-        <p className="mt-1 text-sm text-muted">
-          {businessName} · Select the outcome and capture next steps.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-12">
+      <div className="space-y-6">
+        <div className="h-1 w-full max-w-md overflow-hidden rounded-full bg-border">
+          <div className="h-full w-full rounded-full bg-accent-dark" aria-hidden />
+        </div>
+        <div>
+          <p className="ax-label">Same visit · Commitment · Step 2 of 2</p>
+          <h1 className="ax-h1 mt-3 text-balance">Confirm what they decided</h1>
+          <p className="mt-2 max-w-2xl text-base text-muted">
+            {businessName} — lock the outcome while it&apos;s fresh. This flows straight into disposition and recap.
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {CLOSE_OUTCOMES.map((o) => {
           const isActive = selected === o.type;
           return (
@@ -72,14 +81,14 @@ export function CloseStageSurface({
               type="button"
               onClick={() => onSelectOutcome(isActive ? null : o.type)}
               className={cn(
-                "w-full rounded-xl border px-4 py-3.5 text-left transition-all duration-150",
+                "w-full rounded-xl border px-5 py-4 text-left transition-all duration-150",
                 isActive ? o.activeColor : o.color
               )}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{o.label}</p>
-                  <p className="mt-0.5 text-xs text-muted">{o.sub}</p>
+                  <p className="text-base font-semibold text-foreground">{o.label}</p>
+                  <p className="mt-0.5 text-sm text-muted">{o.sub}</p>
                 </div>
                 <div
                   className={cn(
@@ -91,14 +100,12 @@ export function CloseStageSurface({
 
               {isActive && (
                 <div
-                  className="mt-4 space-y-3 border-t border-border/40 pt-4"
+                  className="mt-5 space-y-4 border-t border-border/50 pt-5"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {(o.type === "start-now" || o.type === "send-proposal" || o.type === "book-setup-call") && (
                     <div>
-                      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        Package
-                      </label>
+                      <label className="mb-2 block ax-label">Package</label>
                       <div className="flex flex-wrap gap-2">
                         {CLOSE_PACKAGES.map((p) => (
                           <button
@@ -106,7 +113,7 @@ export function CloseStageSurface({
                             type="button"
                             onClick={() => onPackageSelected(p)}
                             className={cn(
-                              "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                              "rounded-lg border px-3 py-2 text-sm font-medium transition",
                               packageSelected === p
                                 ? "border-accent bg-accent text-white"
                                 : "border-border text-muted hover:border-accent/40 hover:text-foreground"
@@ -121,39 +128,33 @@ export function CloseStageSurface({
 
                   {o.type === "send-proposal" && (
                     <div>
-                      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        Send to (name / email)
-                      </label>
+                      <label className="mb-2 block ax-label">Send to (name / email)</label>
                       <input
                         type="text"
                         value={proposalRecipient}
                         onChange={(e) => onProposalRecipientChange(e.target.value)}
                         placeholder="Owner name or email…"
-                        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+                        className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
                       />
                     </div>
                   )}
 
                   {o.type === "need-decision-maker" && (
                     <div>
-                      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        Decision-Maker Name (if known)
-                      </label>
+                      <label className="mb-2 block ax-label">Decision-maker (if known)</label>
                       <input
                         type="text"
                         value={decisionMakerName}
                         onChange={(e) => onDecisionMakerNameChange(e.target.value)}
                         placeholder="Owner / manager name…"
-                        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+                        className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
                       />
                     </div>
                   )}
 
                   {(o.type === "follow-up-later" || o.type === "need-decision-maker") && (
                     <div>
-                      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        Reason
-                      </label>
+                      <label className="mb-2 block ax-label">Reason</label>
                       <div className="flex flex-wrap gap-2">
                         {CLOSE_FOLLOW_UP_REASONS.map((r) => (
                           <button
@@ -161,7 +162,7 @@ export function CloseStageSurface({
                             type="button"
                             onClick={() => onFollowUpReasonChange(r)}
                             className={cn(
-                              "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                              "rounded-lg border px-3 py-2 text-sm font-medium transition",
                               followUpReason === r
                                 ? "border-accent bg-accent/10 text-accent"
                                 : "border-border text-muted hover:border-accent/30 hover:text-foreground"
@@ -176,9 +177,7 @@ export function CloseStageSurface({
 
                   {(o.type === "follow-up-later" || o.type === "need-decision-maker") && (
                     <div>
-                      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        Follow Up In
-                      </label>
+                      <label className="mb-2 block ax-label">Follow up in</label>
                       <div className="flex flex-wrap gap-2">
                         {CLOSE_FOLLOW_UP_TIMINGS.map((t) => (
                           <button
@@ -186,7 +185,7 @@ export function CloseStageSurface({
                             type="button"
                             onClick={() => onFollowUpTimingChange(t)}
                             className={cn(
-                              "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                              "rounded-lg border px-3 py-2 text-sm font-medium transition",
                               followUpTiming === t
                                 ? "border-accent bg-accent/10 text-accent"
                                 : "border-border text-muted hover:border-accent/30 hover:text-foreground"
@@ -201,9 +200,7 @@ export function CloseStageSurface({
 
                   {(o.type === "not-interested" || o.type === "not-a-fit") && (
                     <div>
-                      <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-                        Loss Reason
-                      </label>
+                      <label className="mb-2 block ax-label">Loss reason</label>
                       <div className="flex flex-wrap gap-2">
                         {CLOSE_LOSS_REASONS.map((r) => (
                           <button
@@ -211,7 +208,7 @@ export function CloseStageSurface({
                             type="button"
                             onClick={() => onLossReasonChange(r)}
                             className={cn(
-                              "rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+                              "rounded-lg border px-3 py-2 text-sm font-medium transition",
                               lossReason === r
                                 ? "border-signal-red/50 bg-signal-red/10 text-signal-red"
                                 : "border-border text-muted hover:border-signal-red/30 hover:text-foreground"
@@ -225,15 +222,13 @@ export function CloseStageSurface({
                   )}
 
                   <div>
-                    <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-muted">
-                      Notes (optional)
-                    </label>
+                    <label className="mb-2 block ax-label">Notes (optional)</label>
                     <textarea
                       value={notes}
                       onChange={(e) => onNotesChange(e.target.value)}
                       rows={2}
                       placeholder="Anything else worth capturing…"
-                      className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
+                      className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
                     />
                   </div>
                 </div>
@@ -243,14 +238,14 @@ export function CloseStageSurface({
         })}
       </div>
 
-      <button
+      <PrimaryButton
         type="button"
         onClick={onFinalize}
         disabled={!canFinalize}
-        className="w-full rounded-xl bg-accent px-5 py-3.5 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-40"
+        className="w-full py-4 text-base disabled:opacity-40"
       >
-        Finalize Session →
-      </button>
+        Finalize and continue to disposition
+      </PrimaryButton>
     </div>
   );
 }

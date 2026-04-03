@@ -15,9 +15,9 @@ export function PricingCard({ tier, selected, onSelect }: PricingCardProps) {
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full text-left rounded-2xl border bg-card p-4 shadow-soft transition",
+        "w-full text-left rounded-xl border bg-card p-4 shadow-soft transition",
         "hover:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/20",
-        selected ? "border-accent/60 ring-1 ring-accent/30" : "border-border"
+        selected ? "border-accent-dark/45 ring-2 ring-accent-dark/20 shadow-medium" : "border-border"
       )}
       aria-pressed={selected}
     >

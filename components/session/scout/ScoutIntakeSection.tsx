@@ -3,16 +3,15 @@
 import type {
   BusinessProfile,
   ConstraintKey,
+  FieldEngagementDecision,
   FieldSnapshotKey,
   ConstraintSeverity,
 } from "@/types/session";
-import {
-  ConstraintsCapturePanel,
-  defaultConstraintSeverity,
-} from "@/components/field-read/ConstraintsCapturePanel";
+import { ConstraintsCapturePanel } from "@/components/field-read/ConstraintsCapturePanel";
 import { BusinessLookupPanel } from "@/components/field-read/BusinessLookupPanel";
 import { FormSelect } from "@/components/field-read/FormSelect";
 import { SCOUT_LEAD_SOURCES, SCOUT_LEAD_SYSTEMS } from "@/lib/field/scoutOptions";
+import { DecisionCard } from "@/components/field-read/DecisionCard";
 
 type ScoutIntakeSectionProps = {
   form: BusinessProfile;
@@ -29,6 +28,8 @@ type ScoutIntakeSectionProps = {
   onSubmit: (e: React.FormEvent) => void;
   onSkipToDemo: () => void;
   onContinueWithoutBrief: () => void;
+  engagementGate: FieldEngagementDecision | null;
+  canShowEngagementGate: boolean;
 };
 
 export function ScoutIntakeSection({
@@ -46,6 +47,8 @@ export function ScoutIntakeSection({
   onSubmit,
   onSkipToDemo,
   onContinueWithoutBrief,
+  engagementGate,
+  canShowEngagementGate,
 }: ScoutIntakeSectionProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -55,12 +58,13 @@ export function ScoutIntakeSection({
         businessTypes={[...businessTypes]}
       />
 
-      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Lead flow</p>
-        <p className="mb-4 text-sm text-muted">
-          How leads get in today — feeds the brief and demo story.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
+      <details className="group rounded-2xl border border-border bg-card shadow-soft">
+        <summary className="cursor-pointer list-none px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">Lead context</span>
+          <span className="mt-1 block text-sm text-foreground">System &amp; source (optional — add during visit if needed)</span>
+          <span className="mt-2 inline-block text-xs font-semibold text-accent group-open:hidden">Tap to expand</span>
+        </summary>
+        <div className="grid gap-4 border-t border-border px-5 pb-5 pt-4 sm:grid-cols-2 sm:px-6">
           <FormSelect
             label="Current lead system"
             options={[...SCOUT_LEAD_SYSTEMS]}
@@ -76,7 +80,7 @@ export function ScoutIntakeSection({
             placeholder="Select source…"
           />
         </div>
-      </section>
+      </details>
 
       <ConstraintsCapturePanel
         fieldSnapshot={fieldSnapshot}
@@ -85,6 +89,16 @@ export function ScoutIntakeSection({
         onToggleConstraint={onToggleConstraint}
         onCycleConstraintSeverity={onCycleConstraintSeverity}
       />
+
+      {canShowEngagementGate && engagementGate ? (
+        <DecisionCard gate={engagementGate} />
+      ) : null}
+
+      {canShowEngagementGate && engagementGate?.decision === "WALK" ? (
+        <p className="rounded-xl border border-red-500/25 bg-red-500/5 px-4 py-3 text-center text-sm font-medium text-red-800">
+          Low probability target — consider moving on
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         {loading ? (
@@ -102,10 +116,10 @@ export function ScoutIntakeSection({
         ) : (
           <button
             type="submit"
-            disabled={!canScan || loading}
+            disabled={!canScan || loading || engagementGate?.decision === "WALK"}
             className="min-w-[200px] flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-40"
           >
-            Lock in brief →
+            Generate strategy brief →
           </button>
         )}
         {canScan && !loading && (
@@ -132,10 +146,9 @@ export function ScoutIntakeSection({
         </div>
       )}
 
-      {!loading && canScan && !error && (
+      {!loading && canScan && !error && engagementGate?.decision !== "WALK" && (
         <p className="text-center text-xs text-muted">
-          Brief generates automatically when name and type are set. Constraints and lookup hints
-          sharpen the output.
+          Review the decision gate, then generate the brief — one step at a time.
         </p>
       )}
     </form>

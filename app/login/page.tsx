@@ -10,9 +10,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
-      <div className="w-full max-w-md rounded-3xl border border-border bg-surface p-8 shadow-soft ring-1 ring-slate-900/[0.04]">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-surface p-8 shadow-soft ring-1 ring-foreground/[0.04]">
         <div className="mb-6">
-          <AxiomFieldLogo />
+          <AxiomFieldLogo size="lg" />
         </div>
 
         <h1 className="mb-2 text-2xl font-semibold tracking-tight text-foreground">
@@ -33,7 +33,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={() => router.push("/")}
-          className="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-blue-700"
+          className="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-accent-dark"
         >
           Continue
         </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { FormEvent, SyntheticEvent } from "react";
 import { useRouter } from "next/navigation";
 import { SessionStageShell } from "@/components/session/SessionStageShell";
@@ -15,6 +15,7 @@ import type {
   FieldSnapshotKey,
   ConstraintSeverity,
 } from "@/types/session";
+import { computeEngagementDecision } from "@/lib/decisionEngine";
 import { defaultConstraintSeverity } from "@/components/field-read/ConstraintsCapturePanel";
 import { buildCapturedConstraintLabels } from "@/lib/field/constraintsCapture";
 import { SCOUT_BUSINESS_TYPES } from "@/lib/field/scoutOptions";
@@ -33,6 +34,10 @@ export default function FieldReadPage({
   const setPhase = useSessionStore((s) => s.setPhase);
   const setConstraints = useSessionStore((s) => s.setConstraints);
   const setFieldSnapshot = useSessionStore((s) => s.setFieldSnapshot);
+  const setFieldEngagementDecision = useSessionStore((s) => s.setFieldEngagementDecision);
+  const setCloseState = useSessionStore((s) => s.setCloseState);
+  const setCloseCTAs = useSessionStore((s) => s.setCloseCTAs);
+  const setObjectionTriggered = useSessionStore((s) => s.setObjectionTriggered);
 
   const [form, setForm] = useState<BusinessProfile>(emptyScoutProfile);
   const [fieldSnapshot, setFieldSnapshotLocal] = useState<FieldSnapshotKey[]>([]);
@@ -42,7 +47,6 @@ export default function FieldReadPage({
   const [intel, setIntel] = useState<PreCallIntel | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persistConstraintsToStore = useCallback(
     (fs: FieldSnapshotKey[], cmap: Map<ConstraintKey, ConstraintSeverity>, profile: BusinessProfile) => {
@@ -101,21 +105,27 @@ export default function FieldReadPage({
     setIntel(normalizePreCallIntel(session.preCallIntel));
   }, [session?.id, session?.preCallIntel]);
 
+  const canScan = form.name.trim().length >= 1 && form.type.trim().length >= 1;
+
+  const engagementGate = useMemo(() => {
+    if (!canScan) return null;
+    const rows = constraintsFromMap(constraintMap);
+    return computeEngagementDecision(rows, form.type);
+  }, [canScan, constraintMap, form.type]);
+
   useEffect(() => {
-    if (!form.name.trim() || !form.type.trim() || intel || loading) return;
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      runScan();
-    }, 800);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.name, form.type]);
+    if (!session) return;
+    if (!canScan) {
+      setFieldEngagementDecision(null);
+      return;
+    }
+    if (engagementGate) setFieldEngagementDecision(engagementGate);
+  }, [session?.id, canScan, engagementGate, setFieldEngagementDecision]);
 
   async function runScan() {
+    const gate = engagementGate ?? computeEngagementDecision(constraintsFromMap(constraintMap), form.type);
+    if (!gate || gate.decision === "WALK") return;
+
     setLoading(true);
     setError(null);
     const constraintRows = constraintsFromMap(constraintMap);
@@ -128,7 +138,7 @@ export default function FieldReadPage({
       const res = await fetch("/api/pre-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, fieldEngagementDecision: gate }),
       });
       if (!res.ok) throw new Error("API error");
       const data = (await res.json()) as Partial<PreCallIntel>;
@@ -167,6 +177,10 @@ export default function FieldReadPage({
     setFieldSnapshotLocal([]);
     setConstraintMap(new Map());
     setPreCallIntel(null);
+    setFieldEngagementDecision(null);
+    setCloseState(null);
+    setCloseCTAs(null, null);
+    setObjectionTriggered(false);
     setConstraints([]);
     setFieldSnapshot([]);
     setBusiness(emptyScoutProfile());
@@ -200,11 +214,9 @@ export default function FieldReadPage({
     });
   }
 
-  const canScan = form.name.trim().length >= 1 && form.type.trim().length >= 1;
-
   return (
     <SessionStageShell sessionId={params.sessionId}>
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="w-full space-y-16">
         <ScoutStageHeader
           kicker="Phase 1 · Pre-call intelligence"
           title="Scout the account, capture constraints, get your brief"
@@ -227,6 +239,8 @@ export default function FieldReadPage({
             onSubmit={handleManualScan}
             onSkipToDemo={goToDemo}
             onContinueWithoutBrief={goToDemo}
+            engagementGate={engagementGate}
+            canShowEngagementGate={canScan}
           />
         )}
 

@@ -6,10 +6,10 @@ type ScoutStageHeaderProps = {
 
 export function ScoutStageHeader({ kicker, title, description }: ScoutStageHeaderProps) {
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">{kicker}</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
-      <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
-    </div>
+    <header className="mb-16 space-y-3">
+      <p className="ax-label">{kicker}</p>
+      <h1 className="ax-h1 text-balance">{title}</h1>
+      <p className="max-w-2xl text-base text-muted">{description}</p>
+    </header>
   );
 }

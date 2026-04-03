@@ -15,9 +15,9 @@ const fontMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Axiom Field — Sales Execution Platform",
+  title: "Axiom Field",
   description:
-    "Pre-call intelligence, real-time coaching, and post-call performance scoring for field sales reps.",
+    "Face-to-face sales operating system: live visit flow, one-line coaching, presentation, disposition.",
 };
 
 export default function RootLayout({

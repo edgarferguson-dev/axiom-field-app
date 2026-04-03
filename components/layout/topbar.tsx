@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
+import { AxiomFieldLogo } from "@/components/branding/AxiomFieldLogo";
 
 type TopbarProps = {
   title?: string;
@@ -35,7 +36,7 @@ export function Topbar({
     subtitle ??
     (session?.repName
       ? `${session.repName} · ${session.business?.name ?? "New Session"}`
-      : "Sales Execution Platform");
+      : "Scout → proof → decision");
 
   const onDemoRoute = pathname.includes("/demo");
   const phase = session?.phase;
@@ -45,18 +46,39 @@ export function Topbar({
       : phase ?? "Active";
   const showLiveBadge =
     !statusOverride && (phase === "live-demo" || onDemoRoute);
-  const badgeLabel = statusOverride ?? (showLiveBadge ? "● Live" : phaseLabel);
+  const badgeLabel = statusOverride ?? (showLiveBadge ? "Live" : phaseLabel);
   const showSignalTrend = trend.length > 0 && !onDemoRoute;
 
   return (
-    <header className="border-b border-border bg-surface/95 shadow-sm backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-        <div className="space-y-1">
-          <div className="text-lg font-semibold tracking-tight">{title}</div>
-          <div className="text-sm text-muted">{resolvedSubtitle}</div>
+    <header
+      className={cn(
+        "border-b backdrop-blur-sm",
+        onDemoRoute
+          ? "border-border/30 bg-background/85 py-2.5 shadow-none"
+          : "border-border bg-surface/95 py-4 shadow-sm"
+      )}
+    >
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4">
+        <div className={cn("flex min-w-0 items-center gap-3", onDemoRoute ? "gap-2" : "gap-3")}>
+          <AxiomFieldLogo
+            compact={onDemoRoute}
+            size={onDemoRoute ? "sm" : "md"}
+            className={cn("hidden shrink-0 sm:flex", !onDemoRoute && "sm:items-center")}
+          />
+          <div className={cn("min-w-0", onDemoRoute ? "space-y-0" : "space-y-1")}>
+            <div
+              className={cn(
+                "font-semibold tracking-tight text-foreground",
+                onDemoRoute ? "text-sm" : "text-lg"
+              )}
+            >
+              {title}
+            </div>
+            {!onDemoRoute && <div className="truncate text-sm text-muted">{resolvedSubtitle}</div>}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
           {showSignalTrend && (
             <div className="flex items-center gap-1" aria-label="Recent signal trend">
               {trend.map((s, i) => (
@@ -67,8 +89,8 @@ export function Topbar({
                     s === "green"
                       ? "bg-signal-green"
                       : s === "yellow"
-                      ? "bg-signal-yellow"
-                      : "bg-signal-red"
+                        ? "bg-signal-yellow"
+                        : "bg-signal-red"
                   )}
                 />
               ))}
@@ -77,9 +99,9 @@ export function Topbar({
 
           <div
             className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium",
+              "rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide sm:px-3 sm:py-1 sm:text-xs",
               showLiveBadge
-                ? "border-signal-green/30 bg-signal-green/10 text-signal-green"
+                ? "border-signal-green/35 bg-signal-green/10 text-signal-green"
                 : "border-border bg-background text-muted"
             )}
           >

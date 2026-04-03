@@ -58,6 +58,34 @@ export const CLOSE_OUTCOMES: CloseOutcomeOption[] = [
     color: "border-border bg-card hover:border-signal-red/40",
     activeColor: "border-signal-red/50 bg-signal-red/8 shadow-sm",
   },
+  {
+    type: "follow-up-booked",
+    label: "Follow-up booked",
+    sub: "Time agreed — log it and move to disposition",
+    color: "border-border bg-card hover:border-accent/40",
+    activeColor: "border-accent/50 bg-accent/8 shadow-sm",
+  },
+  {
+    type: "interested-not-ready",
+    label: "Needs review",
+    sub: "Warm — stakeholder or timing in the way",
+    color: "border-border bg-card hover:border-signal-yellow/40",
+    activeColor: "border-signal-yellow/50 bg-signal-yellow/8 shadow-sm",
+  },
+  {
+    type: "price-objection",
+    label: "Price objection",
+    sub: "Value or budget concern surfaced",
+    color: "border-border bg-card hover:border-signal-yellow/40",
+    activeColor: "border-signal-yellow/50 bg-signal-yellow/8 shadow-sm",
+  },
+  {
+    type: "not-qualified",
+    label: "Not qualified",
+    sub: "Does not meet ICP — disqualify cleanly",
+    color: "border-border bg-card hover:border-signal-red/40",
+    activeColor: "border-signal-red/50 bg-signal-red/8 shadow-sm",
+  },
 ];
 
 export const CLOSE_PACKAGES = ["Core Starter", "Growth System", "Scale Package"] as const;

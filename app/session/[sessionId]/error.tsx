@@ -25,6 +25,11 @@ export default function SessionError({
         <p className="max-w-sm text-sm text-muted">
           {error.message || "Something went wrong loading this session."}
         </p>
+        <p className="max-w-sm text-xs text-muted">
+          Stuck? Try{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-[11px]">npm run dev:clean</code> or clear
+          site data.
+        </p>
         {error.digest && (
           <p className="text-xs text-muted opacity-60">Error ID: {error.digest}</p>
         )}

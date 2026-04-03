@@ -2,19 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Trust-forward product palette: white surfaces, navy type, confident blue accent */
+/* DaNI Method — design tokens (mirror styles/tokens.ts + tailwind.config.ts) */
 :root {
-  --background: #f1f5f9;
+  --background: #f3f3f1;
   --surface: #ffffff;
   --card: #ffffff;
-  --border: #e2e8f0;
-  --foreground: #0f172a;
-  --muted: #64748b;
-  --accent: #2563eb;
-  --accent-dim: rgba(37, 99, 235, 0.1);
-  --signal-green: #16a34a;
-  --signal-yellow: #ca8a04;
-  --signal-red: #dc2626;
+  --border: #dcdcdc;
+  --foreground: #111111;
+  --muted: #3a3a3a;
+  --accent: #00a8a8;
+  --accent-dim: #b8e8e8;
+  --accent-dark: #007b7b;
+  --highlight: #00cfcf;
+  --signal-green: #1f7a1f;
+  --signal-yellow: #8a7a38;
+  --signal-red: #a61e1e;
 }
 
 * {
@@ -27,43 +29,46 @@ html {
 }
 
 body {
+  display: block;
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   min-height: 100vh;
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: var(--border);
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 ::selection {
-  background: rgba(37, 99, 235, 0.2);
+  background: rgba(0, 168, 168, 0.22);
   color: var(--foreground);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  .gradient-text {
-    background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .gradient-accent {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  }
+.ax-h1 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+.ax-h2 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.ax-body {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
+.ax-label {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
 }

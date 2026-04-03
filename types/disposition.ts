@@ -1,5 +1,11 @@
 export type DispositionOutcome =
   | "closed"
+  | "followUpBooked"
+  | "interestedNotReady"
+  | "priceObjection"
+  | "noDecisionMaker"
+  | "notQualified"
+  | "noFit"
   | "follow-up"
   | "not-interested"
   | "not-fit"

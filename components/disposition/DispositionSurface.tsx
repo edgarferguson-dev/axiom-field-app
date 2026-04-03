@@ -6,16 +6,13 @@ import { FIELD_SNAPSHOT_OPTIONS } from "@/lib/field/constraintsCapture";
 import { DISPOSITION_STATUS_STYLES, DISPOSITION_TREND_COLOR } from "@/lib/disposition/dispositionStyles";
 import type { Session } from "@/types/session";
 import type { DispositionResult } from "@/types/disposition";
+import { FollowUpQuickActions } from "@/components/disposition/FollowUpQuickActions";
 
 export type DispositionSurfaceProps = {
   session: Session;
   result: DispositionResult;
   onFinalize: () => void;
 };
-
-function humanizeConstraintKey(key: string): string {
-  return key.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-}
 
 export function DispositionSurface({ session, result, onFinalize }: DispositionSurfaceProps) {
   const statusStyle = DISPOSITION_STATUS_STYLES[result.status] ?? DISPOSITION_STATUS_STYLES["lost"];
@@ -24,19 +21,19 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
   const closeOutcome = session.closeOutcome;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Phase 6 · Disposition</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Session Outcome</h2>
-        <p className="mt-1 text-sm text-muted">
+    <div className="mx-auto max-w-6xl space-y-16">
+      <section className="space-y-3">
+        <p className="ax-label">After the visit · Disposition</p>
+        <h1 className="ax-h1">What happened — and what&apos;s next</h1>
+        <p className="text-base text-muted">
           {session.business?.name ?? "Unknown business"} · {session.repName}
         </p>
-      </div>
+      </section>
 
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-        <div className="grid gap-5 sm:grid-cols-2">
+      <div className="rounded-xl border border-border bg-surface p-8 shadow-soft">
+        <div className="grid gap-6 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Status</p>
+            <p className="ax-label">Status</p>
             <div className="mt-2">
               <span className={cn("rounded-full border px-3 py-1.5 text-sm font-semibold", statusStyle.badge)}>
                 {statusStyle.label}
@@ -45,7 +42,7 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Confidence</p>
+            <p className="ax-label">Confidence</p>
             <div className="mt-2 flex items-center gap-3">
               <span className="text-2xl font-semibold tabular-nums">{result.confidence}%</span>
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
@@ -58,7 +55,7 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Signal Trend</p>
+            <p className="ax-label">Signal trend</p>
             <div
               className={cn(
                 "mt-2 flex items-center gap-2 text-sm font-medium",
@@ -81,7 +78,7 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
           </div>
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Objection Coverage</p>
+            <p className="ax-label">Objection coverage</p>
             <div className="mt-2 flex items-center gap-3">
               <span className="text-sm font-medium tabular-nums">{result.coverageScore}%</span>
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
@@ -100,6 +97,19 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
             </div>
           </div>
 
+          {(session.closeState || session.primaryCTA) && (
+            <div className="sm:col-span-2">
+              <p className="ax-label">Close rail</p>
+              <p className="mt-2 text-sm text-foreground">
+                Rail: {session.closeState ?? "—"} · Objection interrupt:{" "}
+                {session.objectionTriggered ? "Yes" : "No"}
+              </p>
+              {session.primaryCTA ? (
+                <p className="mt-1 line-clamp-2 text-xs text-muted">{session.primaryCTA}</p>
+              ) : null}
+            </div>
+          )}
+
           {result.packageInterest && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Package Interest</p>
@@ -109,7 +119,7 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
 
           {result.followUpTiming && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Follow Up</p>
+              <p className="ax-label">Follow-up</p>
               <p className="mt-2 text-sm font-medium text-accent">{result.followUpTiming}</p>
             </div>
           )}
@@ -122,8 +132,8 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
       </div>
 
       {closeOutcome && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted">Close Details</p>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+          <p className="ax-label mb-4">Close details</p>
           <div className="space-y-2 text-sm">
             {closeOutcome.proposalRecipient && (
               <div className="flex items-center justify-between gap-3">
@@ -160,8 +170,8 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
       )}
 
       {(session.fieldSnapshot?.length ?? 0) > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted">Field snapshot</p>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+          <p className="ax-label mb-3">Field snapshot</p>
           <div className="flex flex-wrap gap-2">
             {(session.fieldSnapshot ?? []).map((key) => {
               const label = FIELD_SNAPSHOT_OPTIONS.find((o) => o.key === key)?.label ?? key;
@@ -179,8 +189,8 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
       )}
 
       {constraints.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted">Constraints Identified</p>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+          <p className="ax-label mb-3">Constraints</p>
           <div className="flex flex-wrap gap-2">
             {constraints.map((c) => {
               const color =
@@ -200,14 +210,14 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
         </div>
       )}
 
-      <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-        <div className="grid gap-4 sm:grid-cols-2">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+        <div className="grid gap-6 sm:grid-cols-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Hidden Objection</p>
+            <p className="ax-label">Hidden objection</p>
             <p className="mt-2 text-sm leading-relaxed text-muted">{result.hiddenObjection}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Next Action</p>
+            <p className="ax-label">Next action</p>
             <p className="mt-2 text-sm font-medium text-accent">
               {result.nextAction === "retry-close" && "Confirm onboarding details and book setup call."}
               {result.nextAction === "send-proposal" && "Send proposal promptly — momentum is warm."}
@@ -222,22 +232,22 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
       </div>
 
       {result.repMistake && (
-        <div className="rounded-2xl border border-signal-red/20 bg-signal-red/5 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-signal-red">Rep Note</p>
+        <div className="rounded-xl border border-signal-red/20 bg-signal-red/5 p-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-signal-red">Coaching note</p>
           <p className="mt-2 text-sm leading-relaxed text-signal-red/80">{result.repMistake}</p>
         </div>
       )}
 
       {(session.repNotes ?? "").trim().length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted">Rep Notes</p>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+          <p className="ax-label mb-2">Rep notes</p>
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{session.repNotes!.trim()}</p>
         </div>
       )}
 
       {result.presentation && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted">Demo Context</p>
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+          <p className="ax-label mb-3">Demo context</p>
           <div className="grid gap-2 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-muted">Proof engaged</span>
@@ -261,12 +271,18 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
         </div>
       )}
 
+      <FollowUpQuickActions
+        outcome={result.outcome}
+        contactEmail={session.business?.contactEmail}
+        contactPhone={session.business?.contactPhone}
+      />
+
       <button
         type="button"
         onClick={onFinalize}
-        className="w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90"
+        className="w-full rounded-xl bg-accent px-5 py-3.5 text-sm font-semibold text-white shadow-soft transition hover:opacity-90"
       >
-        Generate Performance Score →
+        Continue to performance score
       </button>
     </div>
   );

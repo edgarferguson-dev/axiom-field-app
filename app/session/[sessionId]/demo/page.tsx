@@ -3,14 +3,17 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { SessionStageShell } from "@/components/session/SessionStageShell";
-import { PublicPrivateSplit } from "@/components/layout/public-private-split";
-import { DemoPresentationSurface } from "@/components/demo/DemoPresentationSurface";
-import { DemoCoachingPanel } from "@/components/demo/DemoCoachingPanel";
+import { DemoModeToggle } from "@/components/demo/DemoModeToggle";
+import { PublicScreen } from "@/components/demo/PublicScreen";
+import { PrivateScreen } from "@/components/demo/PrivateScreen";
+import { CommandModeBar } from "@/components/ui/CommandModeBar";
+import { DemoShareLinkHint } from "@/components/demo/DemoShareLinkHint";
 import { useSessionStore } from "@/store/session-store";
 import { requestCoachingPrompt } from "@/lib/coaching/requestCoachingPrompt";
 import { createDemoPresentationCallbacks } from "@/lib/demo/presentationCallbacks";
-import type { MaterialSummary } from "@/lib/flows/materialEngine";
+import type { PresentationEndAction } from "@/components/presentation/PresentationEngine";
 import type { CoachingPrompt } from "@/types/session";
+import { cn } from "@/lib/utils/cn";
 
 export default function DemoPage({
   params,
@@ -23,10 +26,17 @@ export default function DemoPage({
   const setRepNotes = useSessionStore((s) => s.setRepNotes);
   const setPhase = useSessionStore((s) => s.setPhase);
   const markStarted = useSessionStore((s) => s.markStarted);
-  const applyPresentationMaterial = useSessionStore((s) => s.applyPresentationMaterial);
   const addSignal = useSessionStore((s) => s.addSignal);
   const addObjection = useSessionStore((s) => s.addObjection);
   const addSalesStep = useSessionStore((s) => s.addSalesStep);
+  const setCloseOutcome = useSessionStore((s) => s.setCloseOutcome);
+  const markCompleted = useSessionStore((s) => s.markCompleted);
+  const setSignal = useSessionStore((s) => s.setSignal);
+  const dealSignal = useSessionStore((s) => s.signal);
+  const commandMode = useSessionStore((s) => s.commandMode);
+  const setPresentationOpenAccountStarted = useSessionStore((s) => s.setPresentationOpenAccountStarted);
+  const demoViewMode = useSessionStore((s) => s.demoViewMode);
+  const setDemoViewMode = useSessionStore((s) => s.setDemoViewMode);
 
   useEffect(() => {
     if (!session) return;
@@ -39,6 +49,12 @@ export default function DemoPage({
   const [error, setError] = useState<string | null>(null);
   const [proceedToPricingSignal, setProceedToPricingSignal] = useState(0);
 
+  useEffect(() => {
+    if (activePrompt?.signal) {
+      setSignal(activePrompt.signal);
+    }
+  }, [activePrompt?.signal, setSignal]);
+
   const presentationHandlers = useMemo(
     () =>
       createDemoPresentationCallbacks({
@@ -46,8 +62,9 @@ export default function DemoPage({
         addObjection,
         addSalesStep,
         addCoachingPrompt,
+        setDealSignal: setSignal,
       }),
-    [addSignal, addObjection, addSalesStep, addCoachingPrompt]
+    [addSignal, addObjection, addSalesStep, addCoachingPrompt, setSignal]
   );
 
   const handleStart = useCallback(() => {
@@ -85,43 +102,110 @@ export default function DemoPage({
     setProceedToPricingSignal((n) => n + 1);
   }, []);
 
-  const handleMaterialIngest = useCallback(
-    (summary: MaterialSummary) => {
-      applyPresentationMaterial(summary);
+  const handlePresentationAction = useCallback(
+    (action: PresentationEndAction) => {
+      const id = params.sessionId;
+      switch (action) {
+        case "start-setup":
+          addSignal("green");
+          setSignal("green");
+          setPhase("offer-fit");
+          router.push(`/session/${id}/offer-fit`);
+          break;
+        case "book-follow-up":
+          setCloseOutcome({ type: "follow-up-booked", followUpTiming: "This week" });
+          markCompleted();
+          setPhase("disposition");
+          router.push(`/session/${id}/disposition`);
+          break;
+        case "revisit-pain":
+          addSignal("yellow");
+          setSignal("yellow");
+          setPhase("field-read");
+          router.push(`/session/${id}/field-read`);
+          break;
+        case "needs-review":
+          setCloseOutcome({ type: "interested-not-ready" });
+          markCompleted();
+          setPhase("disposition");
+          router.push(`/session/${id}/disposition`);
+          break;
+        case "not-fit":
+          setCloseOutcome({ type: "not-qualified" });
+          markCompleted();
+          setPhase("disposition");
+          router.push(`/session/${id}/disposition`);
+          break;
+      }
     },
-    [applyPresentationMaterial]
+    [params.sessionId, addSignal, setSignal, setPhase, router, setCloseOutcome, markCompleted]
   );
 
+  const showCommandBar = started && dealSignal === "green" && commandMode;
+
+  const handleOpenAccount = useCallback(() => {
+    setPresentationOpenAccountStarted(true);
+    setPhase("offer-fit");
+    router.push(`/session/${params.sessionId}/offer-fit`);
+  }, [setPresentationOpenAccountStarted, setPhase, router, params.sessionId]);
+
+  const handleReinforceValue = useCallback(() => {
+    handleJumpToPricing();
+  }, [handleJumpToPricing]);
+
   return (
-    <SessionStageShell sessionId={params.sessionId}>
-      <PublicPrivateSplit
-        surface="continuous"
-        publicPane={
-          <DemoPresentationSurface
+    <SessionStageShell
+      sessionId={params.sessionId}
+      className={
+        demoViewMode === "public"
+          ? "max-w-none px-2 py-6 sm:px-5 md:px-10 md:py-10 lg:px-14"
+          : undefined
+      }
+    >
+      <div className={cn("space-y-6", showCommandBar && "pb-[7.5rem]")}>
+        <div className="flex justify-center px-2">
+          <DemoModeToggle mode={demoViewMode} onChange={setDemoViewMode} className="w-full sm:max-w-2xl" />
+        </div>
+
+        {demoViewMode === "private" && (
+          <div className="mx-auto max-w-lg px-2">
+            <DemoShareLinkHint />
+          </div>
+        )}
+
+        {demoViewMode === "public" ? (
+          <PublicScreen
             business={session?.business}
             started={started}
             onStart={handleStart}
             proceedToPricingSignal={proceedToPricingSignal}
             presentationHandlers={presentationHandlers}
+            onPresentationAction={handlePresentationAction}
           />
-        }
-        privatePane={
-          <DemoCoachingPanel
+        ) : (
+          <PrivateScreen
             started={started}
             intel={session?.preCallIntel}
+            fieldEngagementDecision={session?.fieldEngagementDecision}
             activePrompt={activePrompt}
             loadingCoach={loadingCoach}
             error={error}
             onGetCoaching={handleGetCoaching}
             onJumpToPricing={handleJumpToPricing}
-            onMaterialIngest={handleMaterialIngest}
             repNotes={session?.repNotes ?? ""}
             onRepNotesChange={setRepNotes}
             coachingPromptCount={session?.coachingPrompts.length ?? 0}
             onEndSession={handleEndSession}
+            closingFocus={showCommandBar}
           />
-        }
-      />
+        )}
+        <CommandModeBar
+          visible={showCommandBar}
+          message="Room is warm — reinforce value or move to setup."
+          onReinforceValue={handleReinforceValue}
+          onOpenAccount={handleOpenAccount}
+        />
+      </div>
     </SessionStageShell>
   );
 }

@@ -9,7 +9,7 @@ export type SlideType =
   | "proof"
   | "interactive-proof"
   | "pricing"
-  | "close-open-account";
+  | "presentation-actions";
 
 export type PricingTier = {
   id: string;
@@ -30,7 +30,7 @@ type BaseSlide = {
 
 export type PresentationSlide =
   | (BaseSlide & {
-      type: Exclude<SlideType, "pricing" | "interactive-proof" | "close-open-account">;
+      type: Exclude<SlideType, "pricing" | "interactive-proof" | "presentation-actions">;
       bullets?: string[];
       callout?: { label: string; value: string };
     })
@@ -43,12 +43,7 @@ export type PresentationSlide =
       tiers: PricingTier[];
       disclaimer?: string;
     })
-  | (BaseSlide & {
-      type: "close-open-account";
-      ctaLabel: string;
-      bullets?: string[];
-      disclaimer?: string;
-    });
+  | (BaseSlide & { type: "presentation-actions" });
 
 // StrategyPackage is used to shape the pitch, without touching store logic.
 export type StrategyPackage = {
@@ -247,18 +242,11 @@ export function generatePresentationSlides(
       disclaimer: strategy.pricingNotes ?? "Tier names and pricing are demo defaults and can be tailored.",
     },
     {
-      id: `${idPrefix}-close`,
-      type: "close-open-account",
-      kicker: "Commit",
-      title: "Open the account and hand off onboarding",
-      subtitle: "When you are ready to move forward, lock the next step while momentum is here.",
-      ctaLabel: strategy.onboardingCta ?? "Open Account →",
-      bullets: [
-        "Pick a start date",
-        "Add your team",
-        "Connect your lead sources (later: GHL/Twilio)",
-      ],
-      disclaimer: "This is a front-end simulation today—no integrations required.",
+      id: `${idPrefix}-actions`,
+      type: "presentation-actions",
+      kicker: "Next step",
+      title: "What should we do next?",
+      subtitle: "Pick one action below — rep talk track stays private.",
     },
   ];
 }

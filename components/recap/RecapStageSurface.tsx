@@ -1,8 +1,25 @@
 "use client";
 
-import type { PerformanceScore, Session } from "@/types/session";
+import type { CloseOutcomeType, PerformanceScore, Session } from "@/types/session";
+import type { DispositionResult } from "@/types/disposition";
 import { ScoreGauge } from "@/components/recap/ScoreGauge";
 import { ScoreBar } from "@/components/recap/ScoreBar";
+import { useSessionStore } from "@/store/session-store";
+import { cn } from "@/lib/utils/cn";
+
+const CLOSE_LABEL: Partial<Record<CloseOutcomeType, string>> = {
+  "start-now": "Start now",
+  "send-proposal": "Send proposal",
+  "book-setup-call": "Book setup call",
+  "need-decision-maker": "Need decision-maker",
+  "follow-up-later": "Follow up later",
+  "not-interested": "Not interested",
+  "not-a-fit": "Not a fit",
+  "follow-up-booked": "Follow-up booked",
+  "interested-not-ready": "Interested — needs review",
+  "price-objection": "Price objection",
+  "not-qualified": "Not qualified",
+};
 
 export type RecapStageSurfaceProps = {
   session: Session;
@@ -14,6 +31,10 @@ export type RecapStageSurfaceProps = {
   onExport: () => void;
 };
 
+function dispositionSummary(d: DispositionResult): string {
+  return d.summary?.trim() || d.status.replace(/-/g, " ");
+}
+
 export function RecapStageSurface({
   session,
   durationMin,
@@ -23,16 +44,21 @@ export function RecapStageSurface({
   onNewSession,
   onExport,
 }: RecapStageSurfaceProps) {
+  const disposition = useSessionStore((s) => s.disposition);
+  const closeLabel = session.closeOutcome?.type
+    ? CLOSE_LABEL[session.closeOutcome.type] ?? session.closeOutcome.type
+    : null;
+
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Phase 3 · Post-Call Debrief</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Session Complete</h2>
-        <p className="mt-1 text-sm text-muted">
+    <div className="mx-auto max-w-6xl space-y-16">
+      <section className="space-y-3">
+        <p className="ax-label">After the visit · Performance recap</p>
+        <h1 className="ax-h1">How the visit landed</h1>
+        <p className="text-base text-muted">
           {session.repName} · {session.business?.name ?? "Unknown business"}
           {durationMin > 0 && ` · ${durationMin} min`}
         </p>
-      </div>
+      </section>
 
       {loading && (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-10 shadow-soft">
@@ -54,20 +80,37 @@ export function RecapStageSurface({
         </div>
       )}
 
+      {!loading && (closeLabel || disposition) && (
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-soft">
+          <p className="ax-label">Outcome</p>
+          {closeLabel && (
+            <p className="mt-2 text-sm font-medium text-foreground">
+              Close: {closeLabel}
+              {session.closeOutcome?.followUpTiming ? ` · ${session.closeOutcome.followUpTiming}` : ""}
+            </p>
+          )}
+          {disposition && (
+            <p className={cn("mt-2 text-sm text-muted", !closeLabel && "mt-0 text-foreground")}>
+              Disposition: {dispositionSummary(disposition)}
+            </p>
+          )}
+        </div>
+      )}
+
       {localScore && !loading && (
         <div className="space-y-4 animate-slide-up">
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="rounded-xl border border-border bg-surface p-6 shadow-soft">
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
               <ScoreGauge score={localScore.overall} />
               <div className="flex-1 text-center sm:text-left">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Overall Performance</p>
+                <p className="ax-label">Overall</p>
                 <p className="mt-2 text-sm leading-relaxed text-foreground">{localScore.summary}</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted">Score Breakdown</p>
+          <div className="rounded-xl border border-border bg-surface p-6 shadow-soft">
+            <p className="ax-label mb-4">Breakdown</p>
             <div className="space-y-4">
               <ScoreBar label="Discovery" value={localScore.breakdown.discovery} />
               <ScoreBar label="Positioning" value={localScore.breakdown.positioning} />
@@ -77,8 +120,8 @@ export function RecapStageSurface({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-signal-green/20 bg-signal-green/5 p-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-signal-green">Strengths</p>
+            <div className="rounded-xl border border-signal-green/20 bg-emerald-50/40 p-6">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-signal-green">Strengths</p>
               <ul className="space-y-2">
                 {localScore.strengths.map((s, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm">
@@ -89,8 +132,8 @@ export function RecapStageSurface({
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-signal-yellow/20 bg-signal-yellow/5 p-5">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-signal-yellow">Improvements</p>
+            <div className="rounded-xl border border-signal-yellow/25 bg-amber-50/40 p-6">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-signal-yellow">Improvements</p>
               <ul className="space-y-2">
                 {localScore.improvements.map((imp, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm">
@@ -103,37 +146,44 @@ export function RecapStageSurface({
           </div>
 
           {session.repNotes?.trim() ? (
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Rep notes</p>
+            <div className="rounded-xl border border-border bg-surface p-6 shadow-soft">
+              <p className="ax-label mb-3">Rep notes</p>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{session.repNotes.trim()}</p>
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Session Data</p>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-xl font-semibold">{session.coachingPrompts?.length ?? 0}</p>
-                <p className="mt-0.5 text-xs text-muted">Coaching Prompts</p>
-              </div>
-              <div>
-                <p className="text-xl font-semibold">{durationMin || "—"}</p>
-                <p className="mt-0.5 text-xs text-muted">Minutes</p>
-              </div>
-              <div>
-                <p className="text-xl font-semibold">{session.preCallIntel ? "Yes" : "No"}</p>
-                <p className="mt-0.5 text-xs text-muted">Pre-Call Done</p>
-              </div>
+          {(session.closeState || session.primaryCTA) && (
+            <div className="rounded-xl border border-border bg-surface p-5 shadow-soft">
+              <p className="ax-label">Close rail</p>
+              <p className="mt-2 text-sm text-foreground">
+                Stage: {session.closeState ?? "—"} · Objection interrupt:{" "}
+                {session.objectionTriggered ? "Yes" : "No"}
+              </p>
+              {session.primaryCTA ? (
+                <p className="mt-1 line-clamp-2 text-xs text-muted">{session.primaryCTA}</p>
+              ) : null}
             </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-border/80 bg-background/50 px-4 py-3 text-sm text-muted">
+            <span>
+              <span className="font-medium text-foreground">{session.coachingPrompts?.length ?? 0}</span> coaching lines
+            </span>
+            <span>
+              <span className="font-medium text-foreground">{durationMin || "—"}</span> min
+            </span>
+            <span>
+              Scout brief {session.preCallIntel ? "ready" : "skipped"}
+            </span>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={onNewSession}
-              className="flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90"
+              className="flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:opacity-90"
             >
-              New Session
+              New visit
             </button>
             <button
               type="button"

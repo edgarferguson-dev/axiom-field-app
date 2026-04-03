@@ -1,9 +1,8 @@
 import { anthropic, parseAIJSON } from "./client";
 import type { CoachingPrompt, BusinessProfile, PreCallIntel } from "@/types/session";
 
-const SYSTEM_PROMPT = `You are a real-time sales coach embedded in Axiom Field — a premium in-field sales tool.
-The rep is live in a demo with a business owner. Your coaching prompts appear privately on the rep's screen.
-Be concise, tactical, and decisive. Never be vague. Output only valid JSON — no markdown, no preamble.`;
+const SYSTEM_PROMPT = `Field manager: one-line tactical cues only. Blunt, calm. No filler, no long scripts.
+JSON only. Each string readable in under 3 seconds.`;
 
 export type CoachingContext = {
   business: BusinessProfile;
@@ -17,29 +16,29 @@ export async function generateCoachingPrompt(
 ): Promise<Omit<CoachingPrompt, "id" | "timestamp">> {
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 512,
+    max_tokens: 380,
     system: SYSTEM_PROMPT,
     messages: [
       {
         role: "user",
-        content: `The rep is live with this business:
+        content: `Business: ${ctx.business.name} (${ctx.business.type})
+Pain: ${ctx.preCallIntel.painPattern}
+Angle: ${ctx.preCallIntel.recommendedAngle}
+Likely objection: ${ctx.preCallIntel.likelyObjection}
+Constraints: ${ctx.business.capturedConstraintLabels?.join("; ") || "—"}
+Rep notes: ${ctx.repNotes || "—"}
+Prior prompts: ${ctx.previousPromptCount}
 
-Business: ${ctx.business.name} (${ctx.business.type})
-Pre-Call Pain: ${ctx.preCallIntel.painPattern}
-Recommended Angle: ${ctx.preCallIntel.recommendedAngle}
-Constraints / diagnosis (from scout): ${ctx.business.capturedConstraintLabels?.join("; ") || "Not specified"}
-Rep's Notes So Far: ${ctx.repNotes || "None yet"}
-Coaching Prompts Given: ${ctx.previousPromptCount}
-
-Generate the next coaching prompt. Return a JSON object:
+Return JSON ONLY:
 {
   "signal": "green" | "yellow" | "red",
-  "audioCue": "Exact phrase the rep should say right now (1 sentence max)",
-  "nextMove": "Tactical action to take in the next 30 seconds",
-  "buySignal": "Optional: a positive signal detected from the context, or omit the field"
-}
-
-signal meanings: green = momentum building, yellow = need to redirect, red = objection or disengagement detected.`,
+  "openWith": "optional: 5–10 words",
+  "avoidLead": "optional: what not to lead with",
+  "device": "now" | "later",
+  "audioCue": "one sentence, max 18 words",
+  "nextMove": "one move, max 15 words",
+  "buySignal": "optional: max 12 words"
+}`,
       },
     ],
   });

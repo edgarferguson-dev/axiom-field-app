@@ -3,17 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "ports:free": "npx --yes kill-port@2.0.1 3000 3001",
-    "dev:clean": "npm run clean:next && npm run ports:free && next dev",
+    "dev": "npm run ports:free && next dev -p 3001",
+    "dev:turbo": "npm run ports:free && next dev -p 3001 --turbo",
+    "ports:free": "npx --yes kill-port@2.0.1 3000 3001 3002 3010",
+    "clean": "npx --yes rimraf@5 .next",
+    "dev:fresh": "npm run ports:free && npm run clean && next dev -p 3001",
+    "dev:clean": "npm run dev:fresh",
     "clean:next": "npx --yes rimraf@5 .next",
     "build": "next build",
-    "build:clean": "npx --yes rimraf@5 .next && next build",
-    "start": "next start",
+    "build:clean": "npm run clean && npm run build",
+    "start": "next start -p 3001",
+    "start:3010": "next start -p 3010",
     "lint": "next lint",
-    "clean": "npx --yes rimraf@5 .next node_modules package-lock.json",
+    "clean:all": "npx --yes rimraf@5 .next node_modules package-lock.json",
     "reinstall": "npm install && npm run build",
-    "fresh": "npm run clean && npm install && npm run build"
+    "fresh": "npm run clean:all && npm install && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -37,6 +41,7 @@
     "react-hook-form": "^7.72.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },

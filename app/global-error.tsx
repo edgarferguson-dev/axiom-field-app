@@ -1,10 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { Inter } from "next/font/google";
+import "./globals.css";
+
+const fontSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+});
 
 /**
- * Catches errors that escape app/error.tsx — including root layout crashes.
- * Must include its own <html>/<body> because it replaces the root layout.
+ * Root error boundary — must define html/body (separate from root layout).
+ * Catches errors in the root layout or when the root layout cannot render.
+ *
+ * Imports globals.css + font here: this tree does NOT inherit `app/layout.tsx`,
+ * so without them the page renders as unstyled HTML.
  */
 export default function GlobalError({
   error,
@@ -13,72 +23,28 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("[Axiom Field] Global error:", error);
-  }, [error]);
-
   return (
-    <html lang="en" className="dark">
-      <body style={{ background: "#07090E", color: "#F1F5F9", fontFamily: "system-ui, sans-serif" }}>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-            gap: "1.5rem",
-            padding: "1rem",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <p style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.2em", color: "#3B82F6" }}>
-              Axiom Field
-            </p>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 600, margin: 0 }}>
-              Something went wrong
-            </h1>
-            <p style={{ fontSize: "0.875rem", color: "#64748B", maxWidth: "28rem", margin: "0 auto" }}>
-              {error.message || "An unexpected client-side error occurred."}
-            </p>
-            {error.digest && (
-              <p style={{ fontSize: "0.75rem", color: "#64748B", opacity: 0.6 }}>
-                Error ID: {error.digest}
-              </p>
-            )}
-          </div>
-
-          <div style={{ display: "flex", gap: "0.75rem" }}>
+    <html lang="en">
+      <body
+        className={`${fontSans.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
+      >
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Axiom Field</p>
+          <h1 className="text-xl font-semibold">Application error</h1>
+          <p className="max-w-md text-sm text-muted">{error.message || "Something went wrong."}</p>
+          <div className="flex flex-wrap justify-center gap-2">
             <button
+              type="button"
               onClick={reset}
-              style={{
-                background: "#3B82F6",
-                color: "#fff",
-                border: "none",
-                borderRadius: "0.75rem",
-                padding: "0.625rem 1.25rem",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white"
             >
               Try again
             </button>
             <a
               href="/"
-              style={{
-                border: "1px solid #1F2A3A",
-                background: "#111827",
-                color: "#64748B",
-                borderRadius: "0.75rem",
-                padding: "0.625rem 1.25rem",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                textDecoration: "none",
-              }}
+              className="rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-muted"
             >
-              Go home
+              Home
             </a>
           </div>
         </div>

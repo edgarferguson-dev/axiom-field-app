@@ -52,13 +52,21 @@ function closeOutcomeToDisposition(type: CloseOutcomeType): {
     case "book-setup-call":
       return { status: "follow-up-scheduled", outcome: "follow-up", nextAction: "schedule-call" };
     case "need-decision-maker":
-      return { status: "needs-decision-maker", outcome: "follow-up", nextAction: "get-decision-maker" };
+      return { status: "needs-decision-maker", outcome: "noDecisionMaker", nextAction: "get-decision-maker" };
     case "follow-up-later":
       return { status: "follow-up-scheduled", outcome: "follow-up", nextAction: "book-follow-up" };
+    case "follow-up-booked":
+      return { status: "follow-up-scheduled", outcome: "followUpBooked", nextAction: "book-follow-up" };
+    case "interested-not-ready":
+      return { status: "follow-up-scheduled", outcome: "interestedNotReady", nextAction: "book-follow-up" };
+    case "price-objection":
+      return { status: "objection-unresolved", outcome: "priceObjection", nextAction: "retry-close" };
+    case "not-qualified":
+      return { status: "no-fit", outcome: "notQualified", nextAction: "disqualify" };
     case "not-interested":
       return { status: "lost", outcome: "not-interested", nextAction: "disqualify" };
     case "not-a-fit":
-      return { status: "no-fit", outcome: "not-fit", nextAction: "disqualify" };
+      return { status: "no-fit", outcome: "noFit", nextAction: "disqualify" };
   }
 }
 
@@ -168,7 +176,12 @@ export function runDisposition(session: Session): DispositionResult {
   const redCount = signals.filter((s) => s === "red").length;
   const trendBonus = signalTrend === "improving" ? 8 : signalTrend === "declining" ? -10 : 0;
   const coverageBonus = Math.round((coverageScore - 50) * 0.15);
-  const closeBonus = closeOutcome?.type === "start-now" ? 15 : closeOutcome?.type === "not-interested" ? -10 : 0;
+  const closeBonus =
+    closeOutcome?.type === "start-now"
+      ? 15
+      : closeOutcome?.type === "not-interested" || closeOutcome?.type === "not-qualified"
+        ? -10
+        : 0;
   const confidenceBase = 70 + greenCount * 5 - redCount * 6 + trendBonus + coverageBonus + closeBonus;
 
   // ── Summary ───────────────────────────────────────────────────────────

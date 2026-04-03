@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSessionStore } from "@/store/session-store";
 import { resolveObjection, getSignalForObjection } from "@/lib/flows/salesEngine";
-import { PublicPrivateSplit } from "@/components/layout/public-private-split";
+import { PublicPrivateSplit } from "@/components/PublicPrivateSplit";
 import { cn } from "@/lib/utils/cn";
 import type { ObjectionType, CoachingPrompt, SessionPhase } from "@/types/session";
 
@@ -118,15 +118,11 @@ export default function DemoEngine() {
         <div className="space-y-5">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-                Live Demo
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Simulation</p>
               <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
-                Conversation Simulation
+                Objection drill
               </h2>
-              <p className="mt-1 text-sm text-muted">
-                Trigger objections to test live sequencing and coaching behavior.
-              </p>
+              <p className="mt-1 text-sm text-muted">Tap an objection — guidance stacks below (no split view).</p>
             </div>
             <div className="flex items-center gap-2">
               {signals.slice(-5).map((s, i) => (
@@ -177,12 +173,8 @@ export default function DemoEngine() {
       privatePane={
         <div className="space-y-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-              Sales Guidance
-            </p>
-            <h3 className="mt-1 text-sm font-semibold text-foreground">
-              Rebuttal → Benefit → Question → Close
-            </h3>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Rep lines</p>
+            <h3 className="mt-1 text-sm font-semibold text-foreground">One row each — glance</h3>
           </div>
 
           {lastStep ? (

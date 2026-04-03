@@ -1,16 +1,15 @@
 import { anthropic, parseAIJSON } from "./client";
-import type { PreCallIntel, BusinessProfile } from "@/types/session";
+import type { PreCallIntel, BusinessProfile, FieldEngagementDecision } from "@/types/session";
 import { normalizePreCallIntel } from "@/lib/utils/preCallIntel";
 
 export { normalizePreCallIntel } from "@/lib/utils/preCallIntel";
 
-const SYSTEM_PROMPT = `You write first-90-seconds field intelligence for Axiom Field reps selling an AI lead-response and follow-up system to local business owners.
+const SYSTEM_PROMPT = `Tight walk-in intel for SMB field reps. Blunt, plain. No fluff. JSON only.`;
 
-Voice: confident, plain-spoken, no corporate filler. No "leverage," "synergy," "solutions," or "it's important to note." Write like a sharp field manager texting a rep before they walk in.
-
-Output only valid JSON. No markdown, no preamble.`;
-
-export async function generatePreCallIntel(business: BusinessProfile): Promise<PreCallIntel> {
+export async function generatePreCallIntel(
+  business: BusinessProfile,
+  gate?: FieldEngagementDecision | null
+): Promise<PreCallIntel> {
   const lookupBlock = [
     business.website && `Website (rep-entered): ${business.website}`,
     business.rating && `Rating hint: ${business.rating}`,
@@ -23,14 +22,27 @@ export async function generatePreCallIntel(business: BusinessProfile): Promise<P
     .filter(Boolean)
     .join("\n");
 
+  const gateBlock =
+    gate && gate.decision !== "WALK"
+      ? `
+
+Engagement gate (deterministic — honor this; do not contradict):
+- Decision: ${gate.decision} (GO = strong floor; SOFT_GO = mixed; do not treat as a laydown)
+- Confidence: ${gate.confidence}%
+- Primary angle to anchor the brief: ${gate.primaryAngle}
+- Reason: ${gate.reason}
+
+Rules: Align recommendedAngle and keyOpportunities[0] with the primary angle. If SOFT_GO, stay measured — no hype. If GO, be direct. Never recommend walking away; the rep already chose to generate a brief.`
+      : "";
+
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1200,
+    max_tokens: 900,
     system: SYSTEM_PROMPT,
     messages: [
       {
         role: "user",
-        content: `Account snapshot — turn this into walk-in intelligence.
+        content: `Snapshot for walk-in (not marketing).
 
 Business: ${business.name}
 Type: ${business.type}
@@ -46,17 +58,18 @@ Constraints / floor signals (rep taps): ${
 
 Optional context (may be empty):
 ${lookupBlock || "None"}
+${gateBlock}
 
-Return JSON with exactly these keys:
+Return JSON with exactly these keys (keep strings tight):
 
 {
-  "painPattern": "1–2 short sentences. Name the leak in their words (missed calls, slow text-back, no-show follow-up, etc.). No lecture.",
+  "painPattern": "Max 2 sentences. Name the leak in operator language.",
   "riskBand": "high" | "medium" | "low",
-  "missedValueEstimate": "One line, specific. Example shape: ~$X–Yk/mo in dead air on [calls/DMs/bookings] — not a disclaimer paragraph.",
+  "missedValueEstimate": "One line with a number range or concrete loss shape.",
   "keyOpportunities": ["string1", "string2", "string3"],
-  "recommendedAngle": "Single sentence the rep can say cold. Sounds human, not salesy. No quotes inside the string.",
-  "likelyObjection": "What they'll throw at you in the first two minutes. One sentence + half-sentence on how to stand your ground (no essay).",
-  "approachTiming": "EXACTLY this pattern on ONE line or two short lines: First 90s: [rapport beat → one discovery question → when to name the leak]. Avoid leading with: [one concrete mistake, e.g. pitching AI, price, or a full tour before pain is confirmed].",
+  "recommendedAngle": "One cold sentence. No quotes inside the string.",
+  "likelyObjection": "First objection + one-line counter (no essay).",
+  "approachTiming": "Line 1: First 90s — what to do, then what to ask. Line 2: what not to lead with.",
   "tabletGuidance": "now" | "later" | "either",
   "channelMode": "phone-first" | "verbal-first" | "tablet-first"
 }
