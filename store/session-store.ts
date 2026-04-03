@@ -49,6 +49,7 @@ import {
   getMethodContextForSession,
 } from "@/lib/flows/methodEngine";
 import { isValidMethodId } from "@/types/method";
+import { normalizePreCallIntel } from "@/lib/pre-call/normalizer";
 
 export type SessionHistoryEntry = {
   id: string;
@@ -313,8 +314,14 @@ export const useSessionStore = create<SessionStore>()(
       setBusiness: (business) =>
         set((s) => (s.session ? { session: { ...s.session, business } } : s)),
 
-      setPreCallIntel: (preCallIntel) =>
-        set((s) => (s.session ? { session: { ...s.session, preCallIntel } } : s)),
+      setPreCallIntel: (intel) =>
+        set((s) => {
+          if (!s.session) return s;
+          // Always normalize before persisting — guards against stale localStorage
+          // data and direct store writes that bypass the AI/fallback pipeline.
+          const preCallIntel = intel ? (normalizePreCallIntel(intel) ?? intel) : null;
+          return { session: { ...s.session, preCallIntel } };
+        }),
 
       setFieldEngagementDecision: (fieldEngagementDecision) =>
         set((s) =>

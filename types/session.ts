@@ -8,6 +8,29 @@ import type {
 import type { CloseAssessment, CloseEvent } from "@/types/close";
 import type { MethodId, MethodStrategySnapshot } from "@/types/method";
 
+// Pre-call types live in types/pre-call.ts.
+// Imported here for use in the Session aggregate; re-exported for backward compat.
+import type {
+  RiskBand,
+  TabletGuidance,
+  ChannelMode,
+  PreCallIntel,
+  PreCallAIRaw,
+  PreCallSource,
+  PreCallResult,
+  PreCallRequest,
+} from "@/types/pre-call";
+export type {
+  RiskBand,
+  TabletGuidance,
+  ChannelMode,
+  PreCallIntel,
+  PreCallAIRaw,
+  PreCallSource,
+  PreCallResult,
+  PreCallRequest,
+} from "@/types/pre-call";
+
 // Core phase flow
 export type SessionPhase =
   | "pre-call"
@@ -20,8 +43,6 @@ export type SessionPhase =
   | "debrief"
   | "disposition"
   | "recap";
-
-export type RiskBand = "high" | "medium" | "low";
 
 // SignalColor is the canonical type; Signal is the V2B alias
 export type SignalColor = "green" | "yellow" | "red";
@@ -123,11 +144,7 @@ export type BusinessProfile = {
 
 // ── AI output shapes ───────────────────────────────────────────────────────
 
-/** When to surface tablet / visual demo in the visit */
-export type TabletGuidance = "now" | "later" | "either";
-
-/** Recommended engagement mode for first contact */
-export type ChannelMode = "phone-first" | "verbal-first" | "tablet-first";
+// TabletGuidance, ChannelMode, and PreCallIntel are re-exported above from types/pre-call.ts.
 
 /** Deterministic pre-brief gate (Go / Soft-Go / Walk) — computed before StrategyBrief / pre-call AI. */
 export type FieldEngagementDecision = {
@@ -147,23 +164,6 @@ export const DEMO_CLOSE_STATES: readonly DemoCloseState[] = [
   "ask",
   "close",
 ] as const;
-
-export type PreCallIntel = {
-  painPattern: string;
-  riskBand: RiskBand;
-  missedValueEstimate: string;
-  keyOpportunities: string[];
-  /** Suggested opener line */
-  recommendedAngle: string;
-  /** Objection to prep for early */
-  likelyObjection: string;
-  /** When and how to advance (e.g. first 90s, after rapport) */
-  approachTiming: string;
-  /** Tablet now vs hold for conversation */
-  tabletGuidance: TabletGuidance;
-  /** Phone vs in-person verbal vs tablet-led */
-  channelMode: ChannelMode;
-};
 
 export type CoachingPrompt = {
   id: string;

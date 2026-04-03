@@ -20,7 +20,8 @@ import { defaultConstraintSeverity } from "@/components/field-read/ConstraintsCa
 import { buildCapturedConstraintLabels } from "@/lib/field/constraintsCapture";
 import { SCOUT_BUSINESS_TYPES } from "@/lib/field/scoutOptions";
 import { constraintsFromMap, emptyScoutProfile } from "@/lib/field/scoutForm";
-import { normalizePreCallIntel } from "@/lib/utils/preCallIntel";
+import { normalizePreCallIntel } from "@/lib/pre-call/normalizer";
+import type { PreCallSource } from "@/types/pre-call";
 
 export default function FieldReadPage({
   params,
@@ -140,17 +141,27 @@ export default function FieldReadPage({
       const res = await fetch("/api/pre-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, fieldEngagementDecision: gate }),
+        // Send constraints + fieldSnapshot so the server can run a context-aware
+        // fallback if the AI call fails — the route always returns 200 + valid intel.
+        body: JSON.stringify({
+          ...payload,
+          fieldEngagementDecision: gate,
+          constraints: constraintRows,
+          fieldSnapshot,
+        }),
       });
-      if (!res.ok) throw new Error("API error");
-      const data = (await res.json()) as Partial<PreCallIntel>;
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const data = (await res.json()) as PreCallIntel & { source?: PreCallSource };
+      // Client-side normalize as a final defense against stale/partial shapes.
       const normalized = normalizePreCallIntel(data);
-      if (!normalized) throw new Error("Invalid response");
+      if (!normalized) throw new Error("Unusable response shape");
       setIntel(normalized);
       setPreCallIntel(normalized);
       persistConstraintsToStore(fieldSnapshot, constraintMap, payload);
     } catch {
-      setError("AI scan failed. You can still continue manually.");
+      // Only reached on network failure or a true 5xx — the route handles AI
+      // failures internally by returning deterministic fallback intel.
+      setError("Could not reach the server. You can still continue manually.");
     } finally {
       setLoading(false);
     }
