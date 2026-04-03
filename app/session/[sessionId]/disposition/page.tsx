@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SessionStageShell } from "@/components/session/SessionStageShell";
 import { DispositionSurface } from "@/components/disposition/DispositionSurface";
@@ -18,10 +18,22 @@ export default function DispositionPage({
   const setScore = useSessionStore((s) => s.setScore);
   const setDisposition = useSessionStore((s) => s.setDisposition);
   const setPhase = useSessionStore((s) => s.setPhase);
+  const refreshPostDemoInsights = useSessionStore((s) => s.refreshPostDemoInsights);
 
   const { result, score } = useMemo(() => computeDispositionStage(session), [session]);
 
   useSessionPhase("disposition");
+
+  useEffect(() => {
+    if (!session) return;
+    refreshPostDemoInsights();
+  }, [
+    session?.id,
+    session?.proofEvents?.length,
+    session?.currentProofBlockId,
+    session?.closeEvents?.length,
+    refreshPostDemoInsights,
+  ]);
 
   const handleFinalize = useCallback(() => {
     if (!score || !result) return;

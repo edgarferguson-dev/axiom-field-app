@@ -1,4 +1,12 @@
 import type { SessionPresentationState } from "@/types/presentation";
+import type {
+  ProofAssessment,
+  ProofBrief,
+  ProofEvent,
+  ProofSequence,
+} from "@/types/proof";
+import type { CloseAssessment, CloseEvent } from "@/types/close";
+import type { MethodId, MethodStrategySnapshot } from "@/types/method";
 
 // Core phase flow
 export type SessionPhase =
@@ -228,6 +236,19 @@ export type Session = {
   signals: Signal[];
   objections: ObjectionType[];
   salesSteps: SalesStep[];
+  /** RFC 1 — Proof Engine (prepared field-read, executed demo, assessed disposition/recap). */
+  proofBrief: ProofBrief | null;
+  proofSequence: ProofSequence | null;
+  currentProofBlockId: string | null;
+  proofEvents: ProofEvent[];
+  proofAssessment: ProofAssessment | null;
+  /** RFC 2 — Close Engine (assessment embeds live `recommendation`; single source of truth). */
+  closeEvents: CloseEvent[];
+  closeAssessment: CloseAssessment | null;
+  /** RFC 3 — persisted method selection (only DaNI is enabled; others stored for future use). */
+  activeMethodId: MethodId;
+  /** RFC 3 — posture snapshot for POST / analytics; optional on legacy rehydrate. */
+  methodStrategy: MethodStrategySnapshot | null;
 };
 
 // ── Utility helpers ────────────────────────────────────────────────────────

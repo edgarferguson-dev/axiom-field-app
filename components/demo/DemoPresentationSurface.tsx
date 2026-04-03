@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PresentationEngine, type PresentationEndAction } from "@/components/presentation/PresentationEngine";
+import { ProofPublicCard } from "@/components/proof/ProofPublicCard";
 import { AxiomFieldLogo } from "@/components/branding/AxiomFieldLogo";
 import { cn } from "@/lib/utils/cn";
 import type { BusinessProfile } from "@/types/session";
@@ -126,6 +127,8 @@ export function DemoPresentationSurface({
             </button>
           )}
         </header>
+
+        {started && <ProofPublicCard started={started} />}
 
         <PresentationEngine
           variant="continuous"

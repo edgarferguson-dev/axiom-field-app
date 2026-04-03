@@ -6,7 +6,7 @@ import { DemoPresentationSurface, type DemoPresentationSurfaceProps } from "@/co
 export type DemoPublicStageProps = DemoPresentationSurfaceProps;
 
 /**
- * DaNI buyer canvas — matte frame, full-width feel, minimal app chrome (deck is the hero).
+ * Buyer-facing demo canvas — matte frame, full-width feel, minimal chrome (deck is the hero).
  */
 export function DemoPublicStage(props: DemoPublicStageProps) {
   return (

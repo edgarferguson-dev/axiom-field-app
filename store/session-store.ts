@@ -33,6 +33,22 @@ import {
 import type { DispositionResult } from "@/types/disposition";
 import type { Lead } from "@/types/lead";
 import type { BuyerState, CoachingMomentum, DemoViewMode } from "@/types/demo";
+import type { BuyerReaction, ProofAssessment, ProofBrief, ProofEvent, ProofSequence } from "@/types/proof";
+import type { CloseAssessment, CloseEvent, ClosePath, CloseRecommendation } from "@/types/close";
+import {
+  buildDefaultProofSequence,
+  buildProofBrief,
+  deriveProofAssessment,
+  lastProofEventForBlock,
+  normalizeCurrentProofBlockId,
+} from "@/lib/flows/proofEngine";
+import { deriveCloseAssessment, shouldAppendCloseEvent } from "@/lib/flows/closeEngine";
+import {
+  createInitialMethodStrategySnapshot,
+  DEFAULT_METHOD_ID,
+  getMethodContextForSession,
+} from "@/lib/flows/methodEngine";
+import { isValidMethodId } from "@/types/method";
 
 export type SessionHistoryEntry = {
   id: string;
@@ -101,6 +117,30 @@ type SessionStore = {
 
   setSignal: (signal: SignalColor) => void;
   setCommandMode: (value: boolean) => void;
+
+  /** RFC 1 — Proof Engine */
+  initializeProofState: () => void;
+  setProofBrief: (brief: ProofBrief | null) => void;
+  setProofSequence: (sequence: ProofSequence | null) => void;
+  setCurrentProofBlock: (blockId: string | null) => void;
+  markProofShown: (blockId: string) => void;
+  markProofSkipped: (blockId: string) => void;
+  markProofRevisited: (blockId: string) => void;
+  setProofBuyerReaction: (blockId: string, reaction: BuyerReaction) => void;
+  setProofAssessment: (assessment: ProofAssessment | null) => void;
+  refreshProofAssessment: () => void;
+  resetProofState: () => void;
+
+  /** RFC 2 — Close Engine */
+  setCloseAssessment: (a: CloseAssessment | null) => void;
+  markClosePrompted: (closePath?: ClosePath) => void;
+  markCloseAttempted: (closePath?: ClosePath) => void;
+  markCloseDeferred: (closePath?: ClosePath) => void;
+  markCloseBlocked: (closePath?: ClosePath) => void;
+  markCloseAdvanced: (closePath?: ClosePath) => void;
+  refreshDemoInsightLayer: () => void;
+  refreshPostDemoInsights: () => void;
+  resetCloseState: () => void;
 };
 
 function makeEmptySession(
@@ -133,7 +173,46 @@ function makeEmptySession(
     signals: [],
     objections: [],
     salesSteps: [],
+    proofBrief: null,
+    proofSequence: null,
+    currentProofBlockId: null,
+    proofEvents: [],
+    proofAssessment: null,
+    closeEvents: [],
+    closeAssessment: null,
+    activeMethodId: DEFAULT_METHOD_ID,
+    methodStrategy: createInitialMethodStrategySnapshot(),
   };
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+/** Proof + close assessment in one pass — canonical `deriveCloseAssessment` only (RFC 2; not pricing/close-outcome workflow). */
+function finalizeSessionInsights(
+  session: Session,
+  signal: SignalColor,
+  buyerState: BuyerState
+): Session {
+  const methodContext = getMethodContextForSession(session);
+  const nextPa = deriveProofAssessment(
+    session.proofSequence,
+    session.proofEvents ?? [],
+    methodContext
+  );
+  const sess: Session = {
+    ...session,
+    proofAssessment: nextPa ?? session.proofAssessment,
+  };
+  const closeAssessment = deriveCloseAssessment({
+    session: sess,
+    liveSignal: signal,
+    buyerState,
+    closeEvents: sess.closeEvents ?? [],
+    methodContext,
+  });
+  return { ...sess, closeAssessment: closeAssessment ?? null };
 }
 
 export const useSessionStore = create<SessionStore>()(
@@ -436,10 +515,262 @@ export const useSessionStore = create<SessionStore>()(
             session: { ...s.session, presentation: { ...pres, interactiveProof } },
           };
         }),
+
+      initializeProofState: () =>
+        set((s) => {
+          if (!s.session) return s;
+          if (s.session.proofSequence && s.session.proofBrief) {
+            const seq = s.session.proofSequence;
+            const start = seq.recommendedStartBlockId || seq.blocks[0]?.id || "";
+            const currentProofBlockId = normalizeCurrentProofBlockId(
+              seq,
+              s.session.currentProofBlockId,
+              start
+            );
+            return { session: { ...s.session, currentProofBlockId } };
+          }
+          const brief = buildProofBrief(s.session);
+          const sequence = buildDefaultProofSequence(brief, s.session);
+          const start = sequence.recommendedStartBlockId || sequence.blocks[0]?.id || "";
+          const keepEvents = !!s.session.proofSequence;
+          return {
+            session: {
+              ...s.session,
+              proofBrief: brief,
+              proofSequence: sequence,
+              currentProofBlockId: start,
+              proofEvents: keepEvents ? (s.session.proofEvents ?? []) : [],
+              proofAssessment: null,
+            },
+          };
+        }),
+
+      setProofBrief: (proofBrief) =>
+        set((s) => (s.session ? { session: { ...s.session, proofBrief } } : s)),
+
+      setProofSequence: (proofSequence) =>
+        set((s) => (s.session ? { session: { ...s.session, proofSequence } } : s)),
+
+      setCurrentProofBlock: (currentProofBlockId) =>
+        set((s) => (s.session ? { session: { ...s.session, currentProofBlockId } } : s)),
+
+      markProofShown: (proofBlockId) =>
+        set((s) => {
+          if (!s.session) return s;
+          const events = s.session.proofEvents;
+          const last = lastProofEventForBlock(events, proofBlockId);
+          if (last?.status === "shown") return s;
+
+          const ev: ProofEvent = {
+            proofBlockId,
+            status: "shown",
+            buyerReaction: "unclear",
+            timestamp: nowIso(),
+          };
+          return {
+            session: {
+              ...s.session,
+              proofEvents: [...events, ev],
+            },
+          };
+        }),
+
+      markProofSkipped: (proofBlockId) =>
+        set((s) => {
+          if (!s.session) return s;
+          const events = s.session.proofEvents;
+          const last = lastProofEventForBlock(events, proofBlockId);
+          if (last?.status === "skipped") return s;
+
+          const ev: ProofEvent = {
+            proofBlockId,
+            status: "skipped",
+            buyerReaction: "unclear",
+            timestamp: nowIso(),
+          };
+          return {
+            session: {
+              ...s.session,
+              proofEvents: [...events, ev],
+            },
+          };
+        }),
+
+      markProofRevisited: (proofBlockId) =>
+        set((s) => {
+          if (!s.session) return s;
+          const ev: ProofEvent = {
+            proofBlockId,
+            status: "revisited",
+            buyerReaction: "unclear",
+            timestamp: nowIso(),
+          };
+          return {
+            session: {
+              ...s.session,
+              proofEvents: [...s.session.proofEvents, ev],
+            },
+          };
+        }),
+
+      setProofBuyerReaction: (proofBlockId, buyerReaction) =>
+        set((s) => {
+          if (!s.session) return s;
+          const events = s.session.proofEvents;
+          let last = -1;
+          for (let i = events.length - 1; i >= 0; i--) {
+            if (events[i].proofBlockId !== proofBlockId) continue;
+            if (events[i].status === "skipped") continue;
+            last = i;
+            break;
+          }
+          if (last < 0) {
+            return {
+              session: {
+                ...s.session,
+                proofEvents: [
+                  ...events,
+                  {
+                    proofBlockId,
+                    status: "shown" as const,
+                    buyerReaction,
+                    timestamp: nowIso(),
+                  },
+                ],
+              },
+            };
+          }
+          const proofEvents = [...events];
+          proofEvents[last] = { ...proofEvents[last], buyerReaction };
+          return { session: { ...s.session, proofEvents } };
+        }),
+
+      setProofAssessment: (proofAssessment) =>
+        set((s) => (s.session ? { session: { ...s.session, proofAssessment } } : s)),
+
+      refreshProofAssessment: () =>
+        set((s) => {
+          if (!s.session?.proofSequence) return s;
+          const methodContext = getMethodContextForSession(s.session);
+          const proofAssessment = deriveProofAssessment(
+            s.session.proofSequence,
+            s.session.proofEvents,
+            methodContext
+          );
+          return proofAssessment
+            ? { session: { ...s.session, proofAssessment } }
+            : s;
+        }),
+
+      resetProofState: () =>
+        set((s) =>
+          s.session
+            ? {
+                session: {
+                  ...s.session,
+                  proofBrief: null,
+                  proofSequence: null,
+                  currentProofBlockId: null,
+                  proofEvents: [],
+                  proofAssessment: null,
+                  closeEvents: [],
+                  closeAssessment: null,
+                },
+              }
+            : s
+        ),
+
+      setCloseAssessment: (closeAssessment) =>
+        set((s) => (s.session ? { session: { ...s.session, closeAssessment } } : s)),
+
+      markClosePrompted: (pathOverride) =>
+        set((s) => {
+          if (!s.session) return s;
+          const closePath =
+            pathOverride ?? s.session.closeAssessment?.recommendation?.path ?? "clarify_value";
+          const ev: CloseEvent = { type: "prompted", closePath, timestamp: nowIso() };
+          const prev = s.session.closeEvents ?? [];
+          if (!shouldAppendCloseEvent(prev, ev)) return s;
+          const session = { ...s.session, closeEvents: [...prev, ev] };
+          return { session: finalizeSessionInsights(session, s.signal, s.buyerState) };
+        }),
+
+      markCloseAttempted: (pathOverride) =>
+        set((s) => {
+          if (!s.session) return s;
+          const closePath =
+            pathOverride ?? s.session.closeAssessment?.recommendation?.path ?? "clarify_value";
+          const ev: CloseEvent = { type: "attempted", closePath, timestamp: nowIso() };
+          const prev = s.session.closeEvents ?? [];
+          if (!shouldAppendCloseEvent(prev, ev)) return s;
+          const session = { ...s.session, closeEvents: [...prev, ev] };
+          return { session: finalizeSessionInsights(session, s.signal, s.buyerState) };
+        }),
+
+      markCloseDeferred: (pathOverride) =>
+        set((s) => {
+          if (!s.session) return s;
+          const closePath =
+            pathOverride ?? s.session.closeAssessment?.recommendation?.path ?? "clarify_value";
+          const ev: CloseEvent = { type: "deferred", closePath, timestamp: nowIso() };
+          const prev = s.session.closeEvents ?? [];
+          if (!shouldAppendCloseEvent(prev, ev)) return s;
+          const session = { ...s.session, closeEvents: [...prev, ev] };
+          return { session: finalizeSessionInsights(session, s.signal, s.buyerState) };
+        }),
+
+      markCloseBlocked: (pathOverride) =>
+        set((s) => {
+          if (!s.session) return s;
+          const closePath =
+            pathOverride ?? s.session.closeAssessment?.recommendation?.path ?? "clarify_value";
+          const ev: CloseEvent = { type: "blocked", closePath, timestamp: nowIso() };
+          const prev = s.session.closeEvents ?? [];
+          if (!shouldAppendCloseEvent(prev, ev)) return s;
+          const session = { ...s.session, closeEvents: [...prev, ev] };
+          return { session: finalizeSessionInsights(session, s.signal, s.buyerState) };
+        }),
+
+      markCloseAdvanced: (pathOverride) =>
+        set((s) => {
+          if (!s.session) return s;
+          const closePath =
+            pathOverride ?? s.session.closeAssessment?.recommendation?.path ?? "clarify_value";
+          const ev: CloseEvent = { type: "advanced", closePath, timestamp: nowIso() };
+          const prev = s.session.closeEvents ?? [];
+          if (!shouldAppendCloseEvent(prev, ev)) return s;
+          const session = { ...s.session, closeEvents: [...prev, ev] };
+          return { session: finalizeSessionInsights(session, s.signal, s.buyerState) };
+        }),
+
+      refreshDemoInsightLayer: () =>
+        set((s) => {
+          if (!s.session) return s;
+          return { session: finalizeSessionInsights(s.session, s.signal, s.buyerState) };
+        }),
+
+      refreshPostDemoInsights: () =>
+        set((s) => {
+          if (!s.session) return s;
+          return { session: finalizeSessionInsights(s.session, s.signal, s.buyerState) };
+        }),
+
+      resetCloseState: () =>
+        set((s) =>
+          s.session
+            ? {
+                session: {
+                  ...s.session,
+                  closeEvents: [],
+                  closeAssessment: null,
+                },
+              }
+            : s
+        ),
     }),
     {
       name: PERSIST_KEY_SESSION,
-      version: 10,
+      version: 14,
       storage: sessionPersistStorage,
       merge: (persistedState, currentState) => {
         if (persistedState == null || typeof persistedState !== "object") {
@@ -505,6 +836,39 @@ export const useSessionStore = create<SessionStore>()(
             // V9: flow loop-back
             if (typeof s.flowMaxStep !== "number" || Number.isNaN(s.flowMaxStep)) {
               s.flowMaxStep = 1;
+            }
+            // V11: RFC 1 Proof Engine
+            if (s.proofBrief === undefined) s.proofBrief = null;
+            if (s.proofSequence === undefined) s.proofSequence = null;
+            if (s.currentProofBlockId === undefined) s.currentProofBlockId = null;
+            if (!Array.isArray(s.proofEvents)) s.proofEvents = [];
+            if (s.proofAssessment === undefined) s.proofAssessment = null;
+            // V12–V13: RFC 2 Close Engine
+            if (!Array.isArray(s.closeEvents)) s.closeEvents = [];
+            if (s.closeAssessment === undefined) s.closeAssessment = null;
+            // V14: RFC 3 Method Engine
+            if (s.activeMethodId === undefined || !isValidMethodId(s.activeMethodId)) {
+              s.activeMethodId = DEFAULT_METHOD_ID;
+            }
+            if (s.methodStrategy === undefined) {
+              s.methodStrategy = createInitialMethodStrategySnapshot();
+            }
+            // V13: `closeRecommendation` removed — embed into `closeAssessment.recommendation`
+            if ("closeRecommendation" in s) {
+              const cr = s.closeRecommendation as CloseRecommendation | null | undefined;
+              let ca = s.closeAssessment as CloseAssessment | null | undefined;
+              if (ca && typeof ca === "object") {
+                if (!("recommendation" in ca) && cr) {
+                  s.closeAssessment = { ...(ca as CloseAssessment), recommendation: cr };
+                } else if (!("recommendation" in ca) && !cr) {
+                  s.closeAssessment = null;
+                }
+                ca = s.closeAssessment as CloseAssessment | null | undefined;
+                if (ca && !("timingQuality" in ca)) {
+                  s.closeAssessment = { ...(ca as CloseAssessment), timingQuality: "unclear" };
+                }
+              }
+              delete s.closeRecommendation;
             }
           }
 

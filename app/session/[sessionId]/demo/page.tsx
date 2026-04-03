@@ -37,11 +37,34 @@ export default function DemoPage({
   const setPresentationOpenAccountStarted = useSessionStore((s) => s.setPresentationOpenAccountStarted);
   const demoViewMode = useSessionStore((s) => s.demoViewMode);
   const setDemoViewMode = useSessionStore((s) => s.setDemoViewMode);
+  const initializeProofState = useSessionStore((s) => s.initializeProofState);
+  const refreshDemoInsightLayer = useSessionStore((s) => s.refreshDemoInsightLayer);
+  const liveSignal = useSessionStore((s) => s.signal);
+  const buyerState = useSessionStore((s) => s.buyerState);
 
   useEffect(() => {
     if (!session) return;
     setPhase("live-demo");
   }, [session?.id, setPhase]);
+
+  useEffect(() => {
+    if (!session) return;
+    initializeProofState();
+  }, [session?.id, initializeProofState]);
+
+  useEffect(() => {
+    if (!session) return;
+    refreshDemoInsightLayer();
+  }, [
+    session?.id,
+    session?.proofEvents?.length,
+    session?.currentProofBlockId,
+    session?.proofAssessment?.proofConfidence,
+    session?.closeEvents?.length,
+    liveSignal,
+    buyerState,
+    refreshDemoInsightLayer,
+  ]);
 
   const [loadingCoach, setLoadingCoach] = useState(false);
   const [activePrompt, setActivePrompt] = useState<CoachingPrompt | null>(null);

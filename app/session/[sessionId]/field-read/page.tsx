@@ -38,6 +38,8 @@ export default function FieldReadPage({
   const setCloseState = useSessionStore((s) => s.setCloseState);
   const setCloseCTAs = useSessionStore((s) => s.setCloseCTAs);
   const setObjectionTriggered = useSessionStore((s) => s.setObjectionTriggered);
+  const initializeProofState = useSessionStore((s) => s.initializeProofState);
+  const resetProofState = useSessionStore((s) => s.resetProofState);
 
   const [form, setForm] = useState<BusinessProfile>(emptyScoutProfile);
   const [fieldSnapshot, setFieldSnapshotLocal] = useState<FieldSnapshotKey[]>([]);
@@ -167,6 +169,7 @@ export default function FieldReadPage({
       capturedConstraintLabels: labels.length ? labels : undefined,
     };
     persistConstraintsToStore(fieldSnapshot, constraintMap, profile);
+    initializeProofState();
     setPhase("live-demo");
     router.push(`/session/${params.sessionId}/demo`);
   }
@@ -184,6 +187,7 @@ export default function FieldReadPage({
     setConstraints([]);
     setFieldSnapshot([]);
     setBusiness(emptyScoutProfile());
+    resetProofState();
   }
 
   function toggleField(key: FieldSnapshotKey) {

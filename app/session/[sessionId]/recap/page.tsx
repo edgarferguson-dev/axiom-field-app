@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SessionStageShell } from "@/components/session/SessionStageShell";
 import { RecapStageSurface } from "@/components/recap/RecapStageSurface";
@@ -17,8 +17,20 @@ export default function RecapPage({
   const router = useRouter();
   const session = useSessionStore((s) => s.session);
   const clearSession = useSessionStore((s) => s.clearSession);
+  const refreshPostDemoInsights = useSessionStore((s) => s.refreshPostDemoInsights);
 
   useSessionPhase("recap");
+
+  useEffect(() => {
+    if (!session) return;
+    refreshPostDemoInsights();
+  }, [
+    session?.id,
+    session?.proofEvents?.length,
+    session?.currentProofBlockId,
+    session?.closeEvents?.length,
+    refreshPostDemoInsights,
+  ]);
   const { loading, error, localScore } = useRecapPerformanceScore();
 
   const durationMin = sessionDurationMinutes(session);

@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils/cn";
 import { useSessionStore } from "@/store/session-store";
 import { getAdaptiveCoaching } from "@/lib/coaching/adaptiveCoaching";
 import { QuickControlPanel } from "@/components/coaching/QuickControlPanel";
+import { ProofPrivatePanel } from "@/components/proof/ProofPrivatePanel";
+import { CloseRecommendationPanel } from "@/components/close/CloseRecommendationPanel";
 import type { BuyerState } from "@/types/demo";
 
 const BUYER_OPTIONS: { value: BuyerState; label: string }[] = [
@@ -49,6 +51,10 @@ export function DemoPrivateStage() {
 
   return (
     <div className="space-y-4">
+      <ProofPrivatePanel />
+
+      <CloseRecommendationPanel />
+
       <header className="space-y-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Rep view</p>
         <p className="text-xs text-muted">Set signal context — coaching lines refresh from there.</p>

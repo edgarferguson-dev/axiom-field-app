@@ -5,8 +5,10 @@ import { formatConstraintKey } from "@/lib/field/formatConstraintKey";
 import { FIELD_SNAPSHOT_OPTIONS } from "@/lib/field/constraintsCapture";
 import { DISPOSITION_STATUS_STYLES, DISPOSITION_TREND_COLOR } from "@/lib/disposition/dispositionStyles";
 import type { Session } from "@/types/session";
+import { formatClosePathLabel } from "@/lib/flows/closeEngine";
 import type { DispositionResult } from "@/types/disposition";
 import { FollowUpQuickActions } from "@/components/disposition/FollowUpQuickActions";
+import { getBlockById } from "@/lib/flows/proofEngine";
 
 export type DispositionSurfaceProps = {
   session: Session;
@@ -130,6 +132,87 @@ export function DispositionSurface({ session, result, onFinalize }: DispositionS
           </div>
         </div>
       </div>
+
+      {session.proofAssessment && session.proofSequence && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+          <p className="ax-label">How proof landed</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Proof confidence</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+                {session.proofAssessment.proofConfidence}%
+              </p>
+            </div>
+            {session.proofAssessment.strongestProofBlockId && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Strongest signal</p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {getBlockById(session.proofSequence, session.proofAssessment.strongestProofBlockId)?.title ?? "—"}
+                </p>
+              </div>
+            )}
+            {session.proofAssessment.weakestProofBlockId && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Weakest area</p>
+                <p className="mt-1 text-sm font-medium text-foreground">
+                  {getBlockById(session.proofSequence, session.proofAssessment.weakestProofBlockId)?.title ?? "—"}
+                </p>
+              </div>
+            )}
+            {session.proofAssessment.unresolvedTrustGap && (
+              <div className="sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Trust gap</p>
+                <p className="mt-1 text-sm leading-relaxed text-foreground">{session.proofAssessment.unresolvedTrustGap}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {session.closeAssessment && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-soft">
+          <p className="ax-label">Close &amp; decision</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Readiness</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+                {session.closeAssessment.readinessScore}%
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Suggested path</p>
+              <p className="mt-1 text-sm font-medium capitalize text-foreground">
+                {formatClosePathLabel(session.closeAssessment.recommendedPath)}
+              </p>
+            </div>
+            {session.closeAssessment.strongestCloseDriver && (
+              <div className="sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Driver</p>
+                <p className="mt-1 text-sm text-foreground">{session.closeAssessment.strongestCloseDriver}</p>
+              </div>
+            )}
+            {session.closeAssessment.primaryBlocker && (
+              <div className="sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Main friction</p>
+                <p className="mt-1 text-sm text-foreground">{session.closeAssessment.primaryBlocker}</p>
+              </div>
+            )}
+            {session.closeAssessment.attemptedPaths.length > 0 && (
+              <div className="sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">Paths you attempted</p>
+                <p className="mt-1 text-sm text-foreground">
+                  {session.closeAssessment.attemptedPaths.map(formatClosePathLabel).join(", ")}
+                </p>
+                {!session.closeAssessment.attemptedPaths.includes(session.closeAssessment.recommendedPath) && (
+                  <p className="mt-2 text-sm text-muted">
+                    Different from the suggested line first — fine if the conversation pulled you there.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {closeOutcome && (
         <div className="rounded-xl border border-border bg-card p-6 shadow-soft">

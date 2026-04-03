@@ -6,6 +6,8 @@ import { ScoreGauge } from "@/components/recap/ScoreGauge";
 import { ScoreBar } from "@/components/recap/ScoreBar";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
+import { getBlockById } from "@/lib/flows/proofEngine";
+import { formatClosePathLabel } from "@/lib/flows/closeEngine";
 
 const CLOSE_LABEL: Partial<Record<CloseOutcomeType, string>> = {
   "start-now": "Start now",
@@ -77,6 +79,107 @@ export function RecapStageSurface({
       {error && (
         <div className="rounded-xl border border-signal-red/30 bg-signal-red/10 p-4">
           <p className="text-sm text-signal-red">{error}</p>
+        </div>
+      )}
+
+      {session.proofAssessment && session.proofSequence && !loading && (
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-soft">
+          <p className="ax-label">How proof landed</p>
+          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+            <p>
+              <span className="text-muted">How solid the arc felt </span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {session.proofAssessment.proofConfidence}%
+              </span>
+            </p>
+            <p>
+              <span className="text-muted">Moments you skipped </span>
+              <span className="font-semibold text-foreground">
+                {(session.proofEvents ?? []).filter((e) => e.status === "skipped").length}
+              </span>
+            </p>
+            {session.proofAssessment.strongestProofBlockId && (
+              <p className="sm:col-span-2">
+                <span className="text-muted">They leaned in most when you covered · </span>
+                <span className="font-medium text-foreground">
+                  {getBlockById(session.proofSequence, session.proofAssessment.strongestProofBlockId)?.title ?? "—"}
+                </span>
+              </p>
+            )}
+            {session.proofAssessment.weakestProofBlockId &&
+              session.proofAssessment.strongestProofBlockId !== session.proofAssessment.weakestProofBlockId && (
+                <p className="sm:col-span-2">
+                  <span className="text-muted">Felt thin when you hit · </span>
+                  <span className="font-medium text-foreground">
+                    {getBlockById(session.proofSequence, session.proofAssessment.weakestProofBlockId)?.title ?? "—"}
+                  </span>
+                </p>
+              )}
+            {session.proofAssessment.unresolvedTrustGap && (
+              <p className="sm:col-span-2 text-muted">{session.proofAssessment.unresolvedTrustGap}</p>
+            )}
+            <p className="sm:col-span-2 text-sm leading-relaxed text-foreground">
+              <span className="font-medium">Coach yourself for next time: </span>
+              {session.proofAssessment.weakestProofBlockId
+                ? `Lead with a tighter story on “${getBlockById(session.proofSequence, session.proofAssessment.weakestProofBlockId)?.title ?? "the soft spot"}” — one concrete example, one verifiable detail.`
+                : "Keep the same arc; refine the one moment the room didn’t buy."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {session.closeAssessment && !loading && (
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-soft">
+          <p className="ax-label">How the close felt</p>
+          <div className="mt-3 space-y-3 text-sm leading-relaxed text-foreground">
+            <p>
+              <span className="text-muted">Suggested line: </span>
+              <span className="font-medium capitalize">{formatClosePathLabel(session.closeAssessment.recommendedPath)}</span>
+              <span className="text-muted"> · readiness felt like </span>
+              <span className="font-semibold tabular-nums">{session.closeAssessment.readinessScore}%</span>
+            </p>
+            {session.closeAssessment.attemptedPaths.length > 0 ? (
+              <>
+                <p>
+                  <span className="text-muted">You tried (logged): </span>
+                  {session.closeAssessment.attemptedPaths.map(formatClosePathLabel).join(", ")}
+                </p>
+                {session.closeAssessment.attemptedPaths.includes(session.closeAssessment.recommendedPath) ? (
+                  <p className="text-muted">At least one attempt matched the suggested line — good alignment.</p>
+                ) : (
+                  <p className="text-muted">
+                    That differed from the suggested line — can work if the room was steering you.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-muted">
+                No &quot;tried close&quot; logged — fine if you stayed in discovery or used your own language.
+              </p>
+            )}
+            <p className="text-muted">
+              <span className="font-medium text-foreground">Timing: </span>
+              {session.closeAssessment.timingQuality === "aligned" && "Felt in sync with how the room was moving."}
+              {session.closeAssessment.timingQuality === "early" && "Pressure likely landed before belief was there."}
+              {session.closeAssessment.timingQuality === "late" && "Several swings after the room had already said no."}
+              {session.closeAssessment.timingQuality === "unclear" && "Hard to tell from the log — mark one moment next time."}
+            </p>
+            {session.closeAssessment.timingCoaching && (
+              <p className="text-foreground/95">{session.closeAssessment.timingCoaching}</p>
+            )}
+            {session.closeAssessment.primaryBlocker && (
+              <p className="text-muted">
+                <span className="font-medium text-foreground">Main friction: </span>
+                {session.closeAssessment.primaryBlocker}
+              </p>
+            )}
+            <p>
+              <span className="font-medium">Next visit: </span>
+              {session.proofAssessment?.weakestProofBlockId && session.proofSequence
+                ? `Tighten “${getBlockById(session.proofSequence, session.proofAssessment.weakestProofBlockId)?.title ?? "the soft spot"}” with one concrete proof beat, then one clear ask.`
+                : "Keep the arc; sharpen the moment that felt fuzzy, then ask once."}
+            </p>
+          </div>
         </div>
       )}
 
