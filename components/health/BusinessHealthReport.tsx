@@ -5,26 +5,42 @@ import type { BusinessProfile } from "@/types/session";
 import type { FieldRepCard, GapDiagnosis, NeighborhoodComparisonState } from "@/types/scoutIntel";
 import { neighborhoodPosterPayload } from "@/types/scoutIntel";
 import { extractNeighborhood } from "@/lib/field/extractNeighborhood";
-import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
 import {
-  GapChipList,
   LeakageBarPoster,
   NeighborhoodComparePoster,
-  RatingGapStrip,
 } from "@/components/presentation/controlled/DiagnosisVisuals";
+import { ProofRunGapRows } from "@/components/presentation/proof-beats/ProofRunGapRows";
+import { ProofRunSystemCapabilityRow } from "@/components/presentation/proof-beats/ProofRunSystemCapabilityRow";
+import { ReportArtifactHeader } from "@/components/health/report/ReportArtifactHeader";
+import { ReportSection } from "@/components/health/report/ReportSection";
+import { ReportConditionSnapshot } from "@/components/health/report/ReportConditionSnapshot";
+import { cn } from "@/lib/utils/cn";
 
 type OfferSlice = { monthlyFee: number; label: string };
 
+const FIX_INCLUDES = [
+  "Missed-call auto text-back so leads don’t go cold",
+  "Self-serve booking path when you’re on the floor",
+  "Automated review prompts after jobs land",
+  "Google profile kept tight with how you actually win",
+] as const;
+
+/**
+ * Standalone merchant-facing health report artifact (full page + optional embed).
+ * Uses normalized scout + diagnosis + neighborhood + offer only — no diagnosis recompute here.
+ */
 export function BusinessHealthReport(props: {
   sessionId: string;
   scoutData: BusinessProfile;
   gapDiagnosis: GapDiagnosis;
   neighborhoodContext: NeighborhoodComparisonState;
-  /** Optional — scout completion does not depend on a configured offer template. */
   offerData?: OfferSlice | null;
   repCard: FieldRepCard;
-  /** When false, omit link back to session (standalone / embed). */
   showSessionLink?: boolean;
+  /** Shown under header, e.g. visit date */
+  preparedLine: string;
+  /** Optional one-line from pre-call intel for leakage context */
+  missedValueLine?: string | null;
 }) {
   const {
     sessionId,
@@ -34,149 +50,165 @@ export function BusinessHealthReport(props: {
     offerData,
     repCard,
     showSessionLink = true,
+    preparedLine,
+    missedValueLine,
   } = props;
 
-  const googleRating = parseScoutRating(scoutData.rating);
-  const reviewCount = parseScoutReviewCount(scoutData.reviewCount);
   const hood = extractNeighborhood(scoutData.address);
   const neighborhoodPoster = neighborhoodPosterPayload(neighborhoodContext);
+  const categoryLine = scoutData.type?.trim() ?? "";
+  const areaLine = [hood, scoutData.address?.trim()].filter(Boolean).join(" · ");
 
   const reportUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/session/${sessionId}/health-report`
       : `/session/${sessionId}/health-report`;
 
+  const ownerPhoneDigits = scoutData.contactPhone?.replace(/\D/g, "") ?? "";
+  const canTextOwner = ownerPhoneDigits.length >= 10;
+
   async function shareReport() {
     const url = typeof window !== "undefined" ? window.location.href : reportUrl;
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `Health Report — ${scoutData.name}`,
+          title: `Health report — ${scoutData.name}`,
           text: `Business health report for ${scoutData.name}`,
           url,
         });
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
-        window.alert("Link copied!");
+        window.alert("Link copied — send it in whatever channel you use with the owner.");
       }
     } catch {
-      /* user cancelled share */
+      /* cancelled */
     }
   }
 
   function textToOwner() {
-    const phone = scoutData.contactPhone?.replace(/\D/g, "") ?? "";
+    if (!canTextOwner) return;
+    const url = typeof window !== "undefined" ? `${window.location.origin}/session/${sessionId}/health-report` : reportUrl;
     const message = encodeURIComponent(
-      `Hey! I put together a quick business health report for ${scoutData.name}. Take a look when you get a chance: ${reportUrl}`
+      `Hi — here’s the business health report we walked through for ${scoutData.name}. Worth a look when you have a minute: ${url}`
     );
-    if (!phone) {
-      window.alert("Add a phone number on the scout card first.");
-      return;
-    }
-    window.open(`sms:${phone}?body=${message}`, "_blank", "noopener,noreferrer");
+    window.open(`sms:${ownerPhoneDigits}?body=${message}`, "_blank", "noopener,noreferrer");
   }
 
+  const hasRepContact =
+    Boolean(repCard.displayName?.trim()) ||
+    Boolean(repCard.org?.trim()) ||
+    Boolean(repCard.phone?.trim()) ||
+    Boolean(repCard.email?.trim());
+
   return (
-    <div
-      className="mx-auto max-w-[420px] rounded-2xl border border-teal-500/20 bg-[#141414] px-5 py-6 text-white shadow-[0_20px_50px_rgba(0,0,0,0.35)] sm:px-6"
-      style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}
-    >
-      <header className="mb-6 border-b border-white/10 pb-5 text-center">
-        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-teal-400/95">
-          Business health report
+    <div className="mx-auto w-full max-w-xl space-y-4 pb-8 sm:space-y-5">
+      <ReportArtifactHeader
+        businessName={scoutData.name}
+        categoryType={categoryLine}
+        areaContext={areaLine}
+        preparedLine={preparedLine}
+      />
+
+      <ReportSection kicker="Current condition" title="How things look today">
+        <div className="space-y-4">
+          <ReportConditionSnapshot ratingRaw={scoutData.rating} reviewCountRaw={scoutData.reviewCount} />
+          <ProofRunGapRows diagnosis={gapDiagnosis} />
         </div>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">{scoutData.name}</h1>
-        <p className="mt-1 text-sm text-white/60">
-          {scoutData.type} · {hood}
+      </ReportSection>
+
+      <ReportSection kicker="Estimated leakage" title="Missed opportunity (directional)">
+        <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} className="border-white/10" />
+        <p className="mt-3 text-center text-xs leading-relaxed text-white/50 sm:text-left">
+          Illustrative model: ~8 missed touches/week × ${gapDiagnosis.avgTicket} avg ticket — not a quote or guarantee.
         </p>
-      </header>
-
-      <section className="mb-5 space-y-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">Snapshot</p>
-        <RatingGapStrip rating={googleRating} reviewCount={reviewCount} />
-      </section>
-
-      <section className="mb-5">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">Current gaps</p>
-        <GapChipList diagnosis={gapDiagnosis} />
-      </section>
-
-      <section className="mb-5 space-y-2">
-        <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} />
-        <p className="text-center text-[12px] text-white/45">
-          ~8 missed touches/wk × ${gapDiagnosis.avgTicket} avg ticket — directional, not a guarantee.
-        </p>
-      </section>
+        {missedValueLine?.trim() ? (
+          <p className="mt-3 rounded-lg border border-white/[0.06] bg-black/25 px-3 py-2.5 text-sm leading-snug text-white/75">
+            {missedValueLine.trim()}
+          </p>
+        ) : null}
+      </ReportSection>
 
       {neighborhoodPoster ? (
-        <section className="mb-5">
+        <ReportSection kicker="Nearby context" title="Similar businesses in the area">
+          <p className="mb-3 text-xs leading-relaxed text-white/50">
+            Neutral snapshot from Maps — context only, not a scorecard against competitors.
+          </p>
           <NeighborhoodComparePoster data={neighborhoodPoster} />
-        </section>
+        </ReportSection>
       ) : null}
 
-      <section className="mb-5 rounded-xl border border-white/10 bg-black/35 px-4 py-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">What the fix includes</p>
-        <ul className="mt-3 space-y-2.5 text-sm text-white/88">
-          {[
-            "Missed-call auto text-back",
-            "24/7 online booking path",
-            "Automated review requests",
-            "Google profile tightening",
-          ].map((item) => (
-            <li key={item} className="flex items-start gap-2">
-              <span className="mt-0.5 text-teal-400">✓</span>
-              <span>{item}</span>
+      <ReportSection kicker="What the fix includes" title="What runs in the background">
+        <ul className="space-y-2.5">
+          {FIX_INCLUDES.map((line) => (
+            <li key={line}>
+              <ProofRunSystemCapabilityRow title={line} />
             </li>
           ))}
         </ul>
-        <div className="mt-5 border-t border-white/10 pt-4 text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Selected offer</p>
-          {offerData ? (
-            <>
-              <p className="mt-1 text-lg font-bold text-white">{offerData.label}</p>
-              <p className="text-2xl font-black tabular-nums text-teal-300">${offerData.monthlyFee}/mo</p>
-              <p className="mt-1 text-xs text-white/50">Free setup · No long contract</p>
-            </>
-          ) : (
-            <p className="mt-2 text-sm text-white/60">
-              Configure a pilot offer in settings to show pricing on this card.
-            </p>
-          )}
-        </div>
-      </section>
+      </ReportSection>
 
-      <section className="mb-5 rounded-xl border border-teal-500/35 bg-teal-500/[0.06] px-4 py-4 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400">Next step</p>
-        <p className="mt-2 text-sm font-medium leading-snug text-white/88">
-          Reply to {repCard.displayName} with questions, or text the number on file. This page is yours to keep —
-          share it with a partner or manager.
-        </p>
-      </section>
-
-      <footer className="rounded-xl border border-white/10 bg-black/25 px-4 py-4 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Prepared by</p>
-        <p className="mt-1 font-bold text-white">{repCard.displayName}</p>
-        <p className="text-sm text-white/55">{repCard.org}</p>
-        {(repCard.phone || repCard.email) && (
-          <div className="mt-2 space-y-0.5 text-sm text-teal-300/95">
-            {repCard.phone ? <div>{repCard.phone}</div> : null}
-            {repCard.email ? <div>{repCard.email}</div> : null}
+      <ReportSection kicker="Pilot" title="Commercial next step" variant="emphasis">
+        {offerData ? (
+          <div className="space-y-1 text-center sm:text-left">
+            <p className="text-lg font-bold text-white">{offerData.label}</p>
+            <p className="text-3xl font-black tabular-nums text-teal-200 sm:text-4xl">${offerData.monthlyFee}/mo</p>
+            <p className="text-xs text-white/55">Terms confirmed in writing after yes — short pilot, no long contract lecture.</p>
           </div>
+        ) : (
+          <p className="text-sm leading-relaxed text-white/70">
+            Pilot pricing is set with your rep for this location. Nothing is wrong with this page — the number lives in
+            your conversation and a short written follow-up.
+          </p>
         )}
-        <div className="mt-4 flex flex-col gap-2">
+      </ReportSection>
+
+      {hasRepContact ? (
+        <ReportSection kicker="Prepared by" title="Your field contact">
+          <div className="space-y-1 text-sm">
+            {repCard.displayName?.trim() ? (
+              <p className="text-base font-bold text-white">{repCard.displayName.trim()}</p>
+            ) : null}
+            {repCard.org?.trim() ? <p className="text-white/60">{repCard.org.trim()}</p> : null}
+            <div className="mt-2 space-y-1 text-teal-200/95">
+              {repCard.phone?.trim() ? <p>{repCard.phone.trim()}</p> : null}
+              {repCard.email?.trim() ? <p className="break-all">{repCard.email.trim()}</p> : null}
+            </div>
+          </div>
+        </ReportSection>
+      ) : null}
+
+      <ReportSection kicker="Next step" title="Keep this page">
+        <p className="text-sm leading-relaxed text-white/80">
+          Save or share this link — it’s the same diagnosis you saw in the proof run. Reply to your rep with questions,
+          or loop in a partner when you’re ready.
+        </p>
+        <div className="mt-5 flex flex-col gap-2.5">
           <button type="button" className="btn-primary" onClick={() => void shareReport()}>
             Share report
           </button>
-          <button type="button" className="btn-secondary" onClick={textToOwner}>
-            Text link to owner
-          </button>
+          {canTextOwner ? (
+            <button type="button" className="btn-secondary" onClick={textToOwner}>
+              Text link to owner
+            </button>
+          ) : (
+            <div
+              className={cn(
+                "flex min-h-12 items-center justify-center rounded-xl border border-white/10 bg-black/30 px-4 text-center text-xs text-white/45"
+              )}
+            >
+              Add the owner’s mobile on the scout card to text this link from your device.
+            </div>
+          )}
           {showSessionLink ? (
-            <Link href={`/session/${sessionId}/demo`} className="btn-secondary inline-block text-center no-underline">
+            <Link
+              href={`/session/${sessionId}/demo`}
+              className="btn-secondary inline-flex min-h-12 items-center justify-center no-underline"
+            >
               Back to proof run
             </Link>
           ) : null}
         </div>
-      </footer>
+      </ReportSection>
     </div>
   );
 }

@@ -27,6 +27,7 @@ import { fetchNeighborhoodComparison } from "@/lib/data/neighborhoodPlaces";
 import { diagnoseGaps, mapPlacesPrimaryType } from "@/lib/field/gapDiagnosis";
 import { generatePainDrivenPreCall } from "@/lib/pre-call/painDrivenIntel";
 import { NEIGHBORHOOD_CONTEXT_IDLE, neighborhoodIntelPayload } from "@/types/scoutIntel";
+import { DEFAULT_OPENING_MODE } from "@/types/presentationPack";
 
 function FieldReadPageInner({
   params,
@@ -362,6 +363,7 @@ function FieldReadPageInner({
             neighborhoodContext={session?.neighborhoodContext ?? NEIGHBORHOOD_CONTEXT_IDLE}
             gapDiagnosis={session?.gapDiagnosis ?? null}
             businessProfile={session?.business ?? null}
+            openingMode={session?.presentation?.openingMode ?? DEFAULT_OPENING_MODE}
             onContinue={goToDemo}
             onNewScout={handleRescan}
           />

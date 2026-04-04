@@ -3,30 +3,26 @@
 import type { ReactNode } from "react";
 import type { BusinessProfile, PreCallIntel, RiskBand, TabletGuidance, ChannelMode } from "@/types/session";
 import type { GapDiagnosis, NeighborhoodComparisonState, PainBriefExtras } from "@/types/scoutIntel";
-import { LeakageBarPoster, RatingGapStrip } from "@/components/presentation/controlled/DiagnosisVisuals";
+import { neighborhoodPosterPayload } from "@/types/scoutIntel";
+import {
+  LeakageBarPoster,
+  NeighborhoodComparePoster,
+  RatingGapStrip,
+} from "@/components/presentation/controlled/DiagnosisVisuals";
 import { NeighborhoodContextSlot } from "@/components/field-read/NeighborhoodContextSlot";
 import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
+import { ReportSection } from "@/components/health/report/ReportSection";
+import { BriefListenForList } from "@/components/brief/BriefListenForList";
+import { BriefFirstBeatBlock } from "@/components/brief/BriefFirstBeatBlock";
+import type { OpeningMode } from "@/types/presentationPack";
 import { cn } from "@/lib/utils/cn";
 
-const RISK_CONFIG: Record<RiskBand, { label: string; color: string; bg: string }> = {
-  high: {
-    label: "High floor pressure",
-    color: "text-signal-red",
-    bg: "bg-signal-red/10 border-signal-red/30",
-  },
-  medium: {
-    label: "Mixed floor",
-    color: "text-signal-yellow",
-    bg: "bg-signal-yellow/10 border-signal-yellow/30",
-  },
-  low: {
-    label: "Open window",
-    color: "text-signal-green",
-    bg: "bg-signal-green/10 border-signal-green/30",
-  },
+const RISK_CONFIG: Record<RiskBand, { label: string; chip: string }> = {
+  high: { label: "High floor pressure", chip: "border-red-500/35 bg-red-950/50 text-red-100" },
+  medium: { label: "Mixed floor", chip: "border-amber-500/35 bg-amber-950/40 text-amber-100" },
+  low: { label: "Open window", chip: "border-teal-500/35 bg-teal-950/40 text-teal-100" },
 };
 
-/** Prompt asks for: "First 90s: … Avoid leading with: …" — split for UI without new fields */
 function splitApproachTiming(raw: string): { first90: string; avoid?: string } {
   const trimmed = raw.trim();
   const re = /\bAvoid leading with:\s*/i;
@@ -37,16 +33,13 @@ function splitApproachTiming(raw: string): { first90: string; avoid?: string } {
   const head = trimmed.slice(0, match.index).replace(/^First 90s:\s*/i, "").trim();
   const tail = trimmed.slice(match.index + match[0].length).trim();
   if (!head && tail) return { first90: "", avoid: tail };
-  return {
-    first90: head || trimmed,
-    avoid: tail || undefined,
-  };
+  return { first90: head || trimmed, avoid: tail || undefined };
 }
 
 const TABLET: Record<TabletGuidance, { label: string; hint: string }> = {
   now: {
     label: "Show the tablet early",
-    hint: "Quick visual while you have attention—one proof, then back to them.",
+    hint: "Quick visual while you have attention — one proof, then back to them.",
   },
   later: {
     label: "Hold the tablet",
@@ -61,7 +54,7 @@ const TABLET: Record<TabletGuidance, { label: string; hint: string }> = {
 const CHANNEL: Record<ChannelMode, { label: string; hint: string }> = {
   "phone-first": {
     label: "Phone-first",
-    hint: "Callbacks matter—lock a clean verbal next step before you leave.",
+    hint: "Callbacks matter — lock a clean verbal next step before you leave.",
   },
   "verbal-first": {
     label: "Verbal-first",
@@ -73,46 +66,11 @@ const CHANNEL: Record<ChannelMode, { label: string; hint: string }> = {
   },
 };
 
-function PrimaryBlock({
-  kicker,
-  children,
-  variant = "default",
-}: {
-  kicker: string;
-  children: ReactNode;
-  variant?: "opener" | "avoid" | "default";
-}) {
+function CoachingRow({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div
-      className={cn(
-        "rounded-2xl border-2 p-5 sm:p-6",
-        variant === "opener" && "border-accent/35 bg-accent/[0.07] shadow-[0_1px_0_0_rgba(15,23,42,0.06)]",
-        variant === "avoid" && "border-amber-400/40 bg-amber-50/90",
-        variant === "default" && "border-slate-200 bg-card shadow-sm"
-      )}
-    >
-      <p
-        className={cn(
-          "text-[11px] font-bold uppercase tracking-[0.14em] sm:text-xs",
-          variant === "opener" && "text-accent",
-            variant === "avoid" && "text-amber-900",
-            variant === "default" && "text-slate-600"
-        )}
-      >
-        {kicker}
-      </p>
-      <div className="mt-3">{children}</div>
-    </div>
-  );
-}
-
-function SecondaryCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 px-4 py-3.5">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-        {title}
-      </p>
-      <div className="mt-2 text-sm leading-relaxed text-slate-800">{children}</div>
+    <div className="rounded-xl border border-white/[0.08] bg-black/35 px-4 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/85">{title}</p>
+      <div className="mt-2 text-sm leading-relaxed text-white/85">{children}</div>
     </div>
   );
 }
@@ -124,6 +82,7 @@ type PreCallBriefPanelProps = {
   gapDiagnosis: GapDiagnosis | null;
   businessProfile: BusinessProfile | null;
   onContinue: () => void;
+  openingMode: OpeningMode;
 };
 
 export function PreCallBriefPanel({
@@ -133,6 +92,7 @@ export function PreCallBriefPanel({
   gapDiagnosis,
   businessProfile,
   onContinue,
+  openingMode,
 }: PreCallBriefPanelProps) {
   const risk = RISK_CONFIG[intel.riskBand] ?? RISK_CONFIG.medium;
   const tablet = TABLET[intel.tabletGuidance] ?? TABLET.either;
@@ -141,153 +101,144 @@ export function PreCallBriefPanel({
 
   const anchorFirst = intel.keyOpportunities[0];
   const backupAngles = intel.keyOpportunities.slice(1);
-  const showNearbyColumn = neighborhoodContext.status !== "idle";
+  const neighborPoster = neighborhoodPosterPayload(neighborhoodContext);
+  const showNeighbor = neighborhoodContext.status === "loading" || neighborPoster != null;
 
   return (
-    <div className="mx-auto w-full max-w-xl animate-slide-up rounded-2xl ring-1 ring-foreground/[0.04]">
-      {/* Context: compact — does not compete with talking points */}
-      <div className="mb-6 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-b border-border/70 pb-5">
-        <span
-          className={cn(
-            "inline-flex shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
-            risk.bg,
-            risk.color
-          )}
-        >
+    <div className="mx-auto w-full max-w-xl space-y-4 sm:space-y-5">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-ink-border bg-ink-900 px-4 py-3 sm:px-5">
+        <span className={cn("rounded-lg border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide", risk.chip)}>
           {risk.label}
         </span>
-        {intel.missedValueEstimate ? (
-          <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-foreground">{intel.missedValueEstimate}</p>
-        ) : null}
+        {intel.missedValueEstimate?.trim() ? (
+          <p className="min-w-0 flex-1 text-xs font-medium leading-snug text-white/70 sm:text-sm">
+            {intel.missedValueEstimate.trim()}
+          </p>
+        ) : (
+          <p className="text-xs text-white/45">Leakage line not generated — scout signals still drive the proof run.</p>
+        )}
       </div>
 
-      {/* PRIMARY: scan order = opener → anchor → objection → avoid → CTA */}
-      <div className="space-y-5">
-        {painExtras ? (
-          <div className="card-secondary space-y-3 border border-white/10 !bg-[#141414] !text-white shadow-[0_16px_40px_-20px_rgba(0,0,0,0.5)]">
-            <p className="text-caption !text-teal-400">Walk-in angle</p>
-            {painExtras.primaryPainHeadline ? (
-              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
-                {painExtras.primaryPainHeadline}
-              </p>
-            ) : null}
-            <p className="text-sm font-semibold text-white/95">&ldquo;{painExtras.openingQuestion}&rdquo;</p>
-            <p className="text-sm text-white/80">{painExtras.openingStatement}</p>
-            <p className="text-sm font-medium text-teal-300/90">Probe: {painExtras.followUpProbe}</p>
-            <div>
-              <p className="text-caption mb-1 !text-white/50">Listen for</p>
-              <ul className="list-inside list-disc text-sm text-white/75">
-                {painExtras.listenFor.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-            <p className="text-xs text-white/55">{painExtras.firstBeatNote}</p>
-          </div>
-        ) : null}
+      {painExtras ? (
+        <>
+          <ReportSection kicker="Primary angle" title={painExtras.primaryPainHeadline?.trim() || "How you enter"}>
+            <p className="text-base font-semibold leading-snug text-white sm:text-lg">{painExtras.openingStatement}</p>
+          </ReportSection>
 
-        {gapDiagnosis ? (
-          <div className="space-y-3">
-            <div
-              className={cn(
-                "grid gap-3",
-                showNearbyColumn ? "sm:grid-cols-2" : "grid-cols-1"
-              )}
-            >
-              <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} className="!border-white/15" />
-              {showNearbyColumn ? (
-                <NeighborhoodContextSlot context={neighborhoodContext} posterClassName="!border-white/15" />
-              ) : null}
-            </div>
-            {businessProfile ? (
+          <ReportSection kicker="Opening question" title="Ask this first">
+            <p className="text-lg font-bold leading-snug text-teal-100 sm:text-xl">
+              &ldquo;{painExtras.openingQuestion}&rdquo;
+            </p>
+          </ReportSection>
+
+          <ReportSection kicker="Follow-up" title="If they lean in">
+            <p className="text-sm leading-relaxed text-white/85 sm:text-base">{painExtras.followUpProbe}</p>
+          </ReportSection>
+
+          <ReportSection kicker="Listen for" title="Signals in the room">
+            <BriefListenForList items={painExtras.listenFor} />
+          </ReportSection>
+
+          <BriefFirstBeatBlock mode={openingMode} note={painExtras.firstBeatNote} />
+        </>
+      ) : (
+        <>
+          <ReportSection kicker="Primary angle" title="Lead with this">
+            <p className="text-lg font-semibold leading-snug text-white sm:text-xl">
+              &ldquo;{intel.recommendedAngle}&rdquo;
+            </p>
+          </ReportSection>
+
+          {anchorFirst ? (
+            <ReportSection kicker="Opening probe" title="First follow-up">
+              <p className="text-sm leading-relaxed text-white/85 sm:text-base">{anchorFirst}</p>
+            </ReportSection>
+          ) : (
+            <ReportSection kicker="Opening probe" title="First follow-up">
+              <p className="text-sm text-white/55">
+                No secondary anchor on file — stay on how they handle inbound leads and who owns follow-up.
+              </p>
+            </ReportSection>
+          )}
+
+          <BriefFirstBeatBlock mode={openingMode} />
+        </>
+      )}
+
+      {gapDiagnosis ? (
+        <ReportSection kicker="Scout snapshot" title="Numbers at a glance">
+          <div className={cn("grid gap-3", showNeighbor ? "sm:grid-cols-2" : "grid-cols-1")}>
+            <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} className="border-white/10" />
+            {showNeighbor ? (
+              neighborPoster ? (
+                <NeighborhoodComparePoster data={neighborPoster} className="border-white/10" />
+              ) : (
+                <NeighborhoodContextSlot context={neighborhoodContext} posterClassName="border-white/10" />
+              )
+            ) : null}
+          </div>
+          {businessProfile ? (
+            <div className="mt-3">
               <RatingGapStrip
                 rating={parseScoutRating(businessProfile.rating)}
                 reviewCount={parseScoutReviewCount(businessProfile.reviewCount)}
-                className="!border-white/15"
+                className="border-white/10"
               />
-            ) : null}
-          </div>
-        ) : null}
+            </div>
+          ) : null}
+        </ReportSection>
+      ) : null}
 
-        {!painExtras ? (
-          <PrimaryBlock kicker="Best opener" variant="opener">
-            <p className="text-[1.125rem] font-semibold leading-snug tracking-tight text-foreground sm:text-xl">
-              &ldquo;{intel.recommendedAngle}&rdquo;
-            </p>
-          </PrimaryBlock>
-        ) : null}
+      {avoid ? (
+        <ReportSection kicker="Guardrail" title="Don’t open with this">
+          <p className="text-sm leading-relaxed text-amber-100/95 sm:text-base">{avoid}</p>
+        </ReportSection>
+      ) : null}
 
-        {anchorFirst ? (
-          <PrimaryBlock kicker="First anchor">
-            <p className="text-base font-medium leading-relaxed text-foreground sm:text-[1.0625rem]">{anchorFirst}</p>
-          </PrimaryBlock>
-        ) : null}
-
-        {avoid ? (
-          <PrimaryBlock kicker="What not to lead with" variant="avoid">
-            <p className="text-base font-medium leading-relaxed text-foreground sm:text-[1.0625rem]">{avoid}</p>
-          </PrimaryBlock>
-        ) : null}
-      </div>
-
-      {/* Dominant CTA — strongest action on screen */}
-      <div className="mt-8 space-y-2.5 px-0.5">
+      <div className="space-y-2.5 pt-1">
         <button type="button" onClick={onContinue} className="btn-primary">
-          Begin Proof Run →
+          Start Proof Run
         </button>
-        <p className="text-center text-xs font-medium text-muted">Step 3 · Owner-facing evidence and ask</p>
+        <p className="text-center text-[11px] font-medium uppercase tracking-[0.12em] text-white/40">
+          Step 3 · Buyer-facing run
+        </p>
       </div>
 
-      {/* SECONDARY: collapsed by default so it never fights the walk-in lines */}
-      <details className="group mt-10 open:pb-1">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-slate-50/90 px-4 py-3.5 text-sm font-semibold text-foreground transition hover:bg-slate-100/90 [&::-webkit-details-marker]:hidden">
+      <details className="group rounded-2xl border border-dashed border-white/15 bg-black/25 open:border-white/25">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-sm font-semibold text-white/90 [&::-webkit-details-marker]:hidden">
           <span>More coaching</span>
-          <span
-            aria-hidden
-            className="text-muted transition-transform duration-200 group-open:rotate-180"
-          >
+          <span aria-hidden className="text-white/45 transition-transform group-open:rotate-180">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </span>
         </summary>
-
-        <div className="mt-5 space-y-4 border-t border-border/70 pt-6">
-          {first90 ? (
-            <SecondaryCard title="Cadence">{first90}</SecondaryCard>
-          ) : null}
-
-          <SecondaryCard title="If they stall">{intel.likelyObjection}</SecondaryCard>
-
-          <div className="space-y-3">
-            <SecondaryCard title="When to show the device">
-              <>
-                <span className="font-semibold text-foreground">{tablet.label}</span>
-                <span className="mt-1 block text-sm text-muted">{tablet.hint}</span>
-              </>
-            </SecondaryCard>
-            <SecondaryCard title="Recommended channel">
-              <>
-                <span className="font-semibold text-foreground">{channel.label}</span>
-                <span className="mt-1 block text-sm text-muted">{channel.hint}</span>
-              </>
-            </SecondaryCard>
-          </div>
-
-          <SecondaryCard title="Pain to name in the room">{intel.painPattern}</SecondaryCard>
-
+        <div className="space-y-3 border-t border-white/10 px-4 py-4">
+          {first90 ? <CoachingRow title="First 90s cadence">{first90}</CoachingRow> : null}
+          <CoachingRow title="If they stall">{intel.likelyObjection}</CoachingRow>
+          <CoachingRow title="Pain to name">{intel.painPattern}</CoachingRow>
+          <CoachingRow title="When to show the device">
+            <>
+              <span className="font-semibold text-white">{tablet.label}</span>
+              <span className="mt-1 block text-white/60">{tablet.hint}</span>
+            </>
+          </CoachingRow>
+          <CoachingRow title="Channel bias">
+            <>
+              <span className="font-semibold text-white">{channel.label}</span>
+              <span className="mt-1 block text-white/60">{channel.hint}</span>
+            </>
+          </CoachingRow>
           {backupAngles.length > 0 ? (
-            <div className="rounded-xl border border-slate-200/90 bg-slate-50/80 px-4 py-3.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                If you get airtime
-              </p>
-              <ul className="mt-3 space-y-3">
+            <div className="rounded-xl border border-white/[0.08] bg-black/35 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-400/85">Backup angles</p>
+              <ul className="mt-3 space-y-2.5">
                 {backupAngles.map((opp, i) => (
-                  <li key={i} className="flex gap-3 text-sm leading-snug text-slate-800">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent">
+                  <li key={i} className="flex gap-3 text-sm text-white/85">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-500/20 text-xs font-bold text-teal-200">
                       {i + 2}
                     </span>
-                    <span>{opp}</span>
+                    <span className="leading-snug">{opp}</span>
                   </li>
                 ))}
               </ul>

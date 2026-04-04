@@ -9,6 +9,7 @@ import type { PreCallIntel } from "@/types/session";
 import { normalizePreCallIntel } from "@/lib/pre-call/normalizer";
 import { emptyScoutProfile } from "@/lib/field/scoutForm";
 import { NEIGHBORHOOD_CONTEXT_IDLE } from "@/types/scoutIntel";
+import { DEFAULT_OPENING_MODE } from "@/types/presentationPack";
 import Link from "next/link";
 
 /**
@@ -79,19 +80,20 @@ export default function BriefPage({ params }: { params: { sessionId: string } })
             neighborhoodContext={session?.neighborhoodContext ?? NEIGHBORHOOD_CONTEXT_IDLE}
             gapDiagnosis={session?.gapDiagnosis ?? null}
             businessProfile={session?.business ?? null}
+            openingMode={session?.presentation?.openingMode ?? DEFAULT_OPENING_MODE}
             onContinue={goToDemo}
             onNewScout={handleRescan}
           />
         ) : (
-          <div className="mx-auto max-w-md rounded-2xl border border-border bg-card/60 px-5 py-8 text-center shadow-sm">
-            <p className="proof-phase-eyebrow text-accent">2 · Brief</p>
-            <h1 className="mt-3 text-lg font-semibold text-foreground">No brief yet</h1>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Run Scout and lock a brief first — then this tab opens your walk-in lines and diagnosis.
+          <div className="mx-auto max-w-xl rounded-2xl border border-ink-border bg-ink-900 px-5 py-8 text-center text-white shadow-[0_12px_40px_rgb(0_0_0/0.2)] sm:px-8">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">Brief</p>
+            <h1 className="mt-3 text-lg font-bold text-white sm:text-xl">No brief yet</h1>
+            <p className="mt-2 text-sm leading-relaxed text-white/65">
+              Lock scout + brief on Field Read — then this tab becomes your tactical sheet for the room.
             </p>
             <Link
               href={`/session/${params.sessionId}/field-read?mode=scout`}
-              className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-accent px-6 text-sm font-semibold text-white"
+              className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-teal-600 px-6 text-sm font-bold text-white no-underline transition hover:bg-teal-500"
             >
               Go to Scout
             </Link>
