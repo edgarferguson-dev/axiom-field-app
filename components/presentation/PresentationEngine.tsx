@@ -37,7 +37,8 @@ function stageGuidance(
 import { narrativeChapterIndexForSlideType, NARRATIVE_CHAPTERS } from "@/lib/presentation/narrativeChapter";
 import { resolveActiveOfferTemplate } from "@/lib/presentation/resolveActiveOfferTemplate";
 import { BeatOneLiners } from "@/components/presentation/BeatOneLiners";
-import { PricingCard } from "@/components/presentation/PricingCard";
+import { ProofRunAskPanel } from "@/components/presentation/proof-beats/ProofRunAskPanel";
+import { DEFAULT_OFFER_TEMPLATES } from "@/types/offerTemplate";
 import { SlideRenderer } from "@/components/presentation/SlideRenderer";
 import { slideIndexForAskBeat, slideIndexForHealthReportBeat } from "@/lib/proofRun/canonicalDeckMapping";
 
@@ -82,14 +83,11 @@ export function PresentationEngine({
   const sessionForOffer = useSessionStore((s) => s.session);
   const offerTemplates = useSessionStore((s) => s.offerTemplates);
   const defaultOfferTemplateId = useSessionStore((s) => s.defaultOfferTemplateId);
-  const activeOffer =
-    sessionForOffer && offerTemplates.length > 0
-      ? resolveActiveOfferTemplate({
-          offerTemplates,
-          defaultOfferTemplateId,
-          session: sessionForOffer,
-        })
-      : null;
+  const activeOfferForAsk = resolveActiveOfferTemplate({
+    offerTemplates: offerTemplates.length > 0 ? offerTemplates : DEFAULT_OFFER_TEMPLATES,
+    defaultOfferTemplateId,
+    session: sessionForOffer ?? null,
+  });
   const ensurePresentationSlides = useSessionStore((s) => s.ensurePresentationSlides);
   const setPresentationPricingTierId = useSessionStore((s) => s.setPresentationPricingTierId);
   const setPresentationPricingResponse = useSessionStore((s) => s.setPresentationPricingResponse);
@@ -416,188 +414,36 @@ export function PresentationEngine({
         )}
 
         {slide.type === "pricing" && (
-          <div className={cn("mt-2 space-y-5", daniSurface && "mt-4 space-y-6")}>
-            {"merchantVisual" in slide && slide.merchantVisual ? (
-              <div className="mb-2">
-                <MerchantProofVisual
-                  surface={slide.merchantVisual}
-                  businessLabel={business?.name ?? undefined}
-                  contextLine={
-                    business?.type?.trim()
-                      ? `How ${business.type.trim()} owners usually describe the leak`
-                      : undefined
-                  }
-                />
-              </div>
-            ) : null}
-            <div
-              className={cn(
-                "rounded-xl border border-border/80 bg-background/40 px-3 py-2.5 sm:px-4 sm:py-3",
-                daniSurface && "border-border/60 bg-card/50 px-5 py-4"
-              )}
-            >
-              <p className="ax-label">{daniSurface ? "The ask" : "Commitment"}</p>
-              <p className={cn("mt-1 text-foreground", daniSurface ? "text-base font-medium sm:text-lg" : "text-sm")}>
-                {daniSurface
-                  ? "One pilot — next beat locks what happens after today."
-                  : "One pilot on screen — nod means you’re aligned."}
-              </p>
-            </div>
-            {gapDiagnosis ? (
-              <div
-                className={cn(
-                  "rounded-xl border px-4 py-3.5",
-                  daniSurface
-                    ? "border-teal-500/25 bg-black/35 text-white"
-                    : "border-accent/25 bg-accent/[0.05]"
-                )}
-              >
-                <p
-                  className={cn(
-                    "text-[10px] font-bold uppercase tracking-[0.18em]",
-                    daniSurface ? "text-teal-400/95" : "text-accent"
-                  )}
-                >
-                  Value frame
-                </p>
-                <p
-                  className={cn(
-                    "mt-2 text-sm leading-snug",
-                    daniSurface ? "text-white/88" : "text-foreground/90"
-                  )}
-                >
-                  Directional leak is about ~${gapDiagnosis.estimatedMonthlyLeakage.toLocaleString()}/mo on the table.
-                  {activeOffer ? (
-                    <>
-                      {" "}
-                      If this pilot recovers even a fraction, {activeOffer.label} at ${activeOffer.monthlyFee}/mo compares to
-                      that leak — not to a feature checklist.
-                    </>
-                  ) : (
-                    <> Anchor the pilot to that leak — not to a feature checklist.</>
-                  )}
-                </p>
-              </div>
-            ) : null}
-            {slide.tiers.length === 1 ? (
-              <div
-                className={cn(
-                  "mx-auto max-w-md rounded-2xl border px-5 py-5 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-inset ring-white/40 sm:px-6 sm:py-6",
-                  daniSurface
-                    ? "border-teal-500/35 bg-gradient-to-b from-teal-950/40 to-black/50 text-white"
-                    : "border-accent/30 bg-gradient-to-b from-accent/[0.09] to-surface ring-accent/5"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p
-                      className={cn(
-                        "text-[10px] font-bold uppercase tracking-[0.16em]",
-                        daniSurface ? "text-white/50" : "text-muted"
-                      )}
-                    >
-                      Selected pilot
-                    </p>
-                    <p className={cn("mt-1 text-base font-bold", daniSurface ? "text-white" : "text-foreground")}>
-                      {slide.tiers[0]!.name}
-                    </p>
-                    {slide.tiers[0]!.subtitle ? (
-                      <p className={cn("mt-1 text-xs font-medium", daniSurface ? "text-white/55" : "text-muted")}>
-                        {slide.tiers[0]!.subtitle}
-                      </p>
-                    ) : null}
-                  </div>
-                  <p className="text-right text-xl font-black tabular-nums text-accent sm:text-2xl">{slide.tiers[0]!.price}</p>
-                </div>
-                <ul
-                  className={cn(
-                    "mt-4 space-y-1.5 border-t pt-3",
-                    daniSurface ? "border-white/15" : "border-border/40"
-                  )}
-                >
-                  {slide.tiers[0]!.highlights.map((h) => (
-                    <li
-                      key={h}
-                      className={cn(
-                        "flex items-start gap-2 text-xs",
-                        daniSurface ? "text-white/88" : "text-foreground/90"
-                      )}
-                    >
-                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
-                      {h}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div
-                className={cn(
-                  "grid gap-3",
-                  slide.tiers.length <= 1 ? "mx-auto max-w-md md:grid-cols-1" : "md:grid-cols-3",
-                  daniSurface && slide.tiers.length > 1 && "gap-4 md:gap-5"
-                )}
-              >
-                {slide.tiers.map((tier) => (
-                  <PricingCard
-                    key={tier.id}
-                    tier={tier}
-                    selected={selectedTierId === tier.id}
-                    onSelect={() => setPresentationPricingTierId(tier.id)}
+          <ProofRunAskPanel
+            slide={slide}
+            business={business}
+            gapDiagnosis={gapDiagnosis}
+            activeOffer={activeOfferForAsk}
+            daniSurface={daniSurface}
+            merchantVisualSlot={
+              "merchantVisual" in slide && slide.merchantVisual ? (
+                <div className="mb-1">
+                  <MerchantProofVisual
+                    surface={slide.merchantVisual}
+                    businessLabel={business?.name ?? undefined}
+                    contextLine={
+                      business?.type?.trim()
+                        ? `How ${business.type.trim()} owners usually describe the leak`
+                        : undefined
+                    }
                   />
-                ))}
-              </div>
-            )}
-
-            {slide.disclaimer && (
-              <div className="text-[11px] leading-relaxed text-muted sm:text-xs">{slide.disclaimer}</div>
-            )}
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-[11px] text-muted sm:text-xs">
-                {slide.tiers.length === 1 || selectedTierId
-                  ? "Ready when they are — one tap to continue the run."
-                  : "Pick a tier to continue."}
-              </div>
-
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-                <button
-                  type="button"
-                  className={cn(
-                    "min-h-[48px] w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-soft transition sm:w-auto sm:py-2.5",
-                    "hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                  )}
-                  disabled={!selectedTierId}
-                  onClick={() => {
-                    setPresentationPricingResponse("accept");
-                    if (postPricingIdx >= 0) commitDeckIndex(postPricingIdx);
-                    onPricingAccept?.();
-                  }}
-                >
-                  Yes — continue
-                </button>
-                <button
-                  type="button"
-                  className="min-h-[48px] w-full rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-sm font-medium text-muted transition hover:border-accent/40 hover:text-foreground sm:w-auto sm:min-h-0 sm:py-2.5"
-                  onClick={() => {
-                    setPresentationPricingResponse("hesitate");
-                    onHesitate?.();
-                  }}
-                >
-                  Need a moment
-                </button>
-                <button
-                  type="button"
-                  className="min-h-[48px] w-full rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-sm font-medium text-muted transition hover:border-signal-red/40 hover:text-signal-red sm:w-auto sm:min-h-0 sm:py-2.5"
-                  onClick={() => {
-                    setPresentationPricingResponse("reject");
-                    onReject?.();
-                  }}
-                >
-                  Not now
-                </button>
-              </div>
-            </div>
-          </div>
+                </div>
+              ) : undefined
+            }
+            selectedTierId={selectedTierId}
+            onSelectTier={(id) => setPresentationPricingTierId(id)}
+            postPricingIdx={postPricingIdx}
+            commitDeckIndex={commitDeckIndex}
+            setPresentationPricingResponse={setPresentationPricingResponse}
+            onPricingAccept={onPricingAccept}
+            onHesitate={onHesitate}
+            onReject={onReject}
+          />
         )}
 
         {slide.type === "presentation-actions" && onPresentationAction && (

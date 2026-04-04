@@ -6,8 +6,8 @@ import {
   type PresentationVisualPattern,
 } from "@/lib/presentation/assets";
 import { MerchantProofVisual } from "@/components/presentation/merchant/MerchantProofVisuals";
-import { LeakageBarPoster } from "@/components/presentation/controlled/DiagnosisVisuals";
 import { PainMirrorBeat } from "@/components/presentation/proof-beats/PainMirrorBeat";
+import { FullSystemBeat } from "@/components/presentation/proof-beats/FullSystemBeat";
 import { ProofRunPhoneSequence } from "@/components/presentation/proof-beats/ProofRunPhoneSequence";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
@@ -243,40 +243,17 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
   }
 
   if (slide.type === "impact-stat") {
-    if (mv) {
-      return (
-        <div className={cn("space-y-5", dani && "space-y-6")}>
-          <div
-            className={cn(
-              "grid gap-4",
-              dani && gapDiagnosis ? "sm:grid-cols-2 sm:items-stretch" : "sm:grid-cols-1"
-            )}
-          >
-            <MerchantProofVisual surface={mv} statText={slide.stat} {...merchantProps} />
-            {dani && gapDiagnosis ? (
-              <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} className="h-full" />
-            ) : null}
-          </div>
-          <p className="text-center text-sm font-medium text-muted sm:text-left">{slide.statSub}</p>
-          <p className={cn("rounded-lg border border-border/50 bg-card/30 px-4 py-3 text-sm font-medium text-foreground", dani && "text-base")}>
-            {slide.takeaway}
-          </p>
-        </div>
-      );
-    }
     const pattern = slide.assetKey ? resolvePresentationVisualPattern(slide.assetKey) : "stat-hero";
     return (
       <div className={cn("space-y-5", dani && "space-y-6")}>
-        <div className="grid gap-4 sm:grid-cols-2 sm:items-center">
-          <VisualFrame pattern={pattern} />
-          <div className="text-center sm:text-left">
-            <p className="text-4xl font-black tabular-nums tracking-tight text-accent sm:text-5xl">{slide.stat}</p>
-            <p className="mt-2 text-sm font-medium text-muted">{slide.statSub}</p>
+        <FullSystemBeat slide={slide} tone={dani ? "dani" : "default"} />
+        {mv ? (
+          <div className="overflow-hidden rounded-2xl border border-ink-border bg-ink-900/50 p-2 sm:p-3">
+            <MerchantProofVisual surface={mv} statText={slide.stat} {...merchantProps} />
           </div>
-        </div>
-        <p className={cn("rounded-lg border border-border/50 bg-card/30 px-4 py-3 text-sm font-medium text-foreground", dani && "text-base")}>
-          {slide.takeaway}
-        </p>
+        ) : (
+          <VisualFrame pattern={pattern} className="opacity-90" />
+        )}
       </div>
     );
   }
