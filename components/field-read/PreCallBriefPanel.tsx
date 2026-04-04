@@ -146,9 +146,9 @@ export function PreCallBriefPanel({
   const backupAngles = intel.keyOpportunities.slice(1);
 
   return (
-    <div className="mx-auto w-full max-w-xl animate-slide-up">
+    <div className="mx-auto w-full max-w-xl animate-slide-up rounded-2xl ring-1 ring-foreground/[0.04]">
       {/* Context: compact — does not compete with talking points */}
-      <div className="mb-8 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/80 pb-5">
+      <div className="mb-6 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-b border-border/70 pb-5">
         <span
           className={cn(
             "inline-flex shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
@@ -166,8 +166,8 @@ export function PreCallBriefPanel({
       {/* PRIMARY: scan order = opener → anchor → objection → avoid → CTA */}
       <div className="space-y-5">
         {painExtras ? (
-          <div className="card-secondary space-y-3 border border-border/30 !bg-[#1a1a1a] !text-white">
-            <p className="text-caption !text-teal-400">Pain-driven walk-in</p>
+          <div className="card-secondary space-y-3 border border-white/10 !bg-[#141414] !text-white shadow-[0_16px_40px_-20px_rgba(0,0,0,0.5)]">
+            <p className="text-caption !text-teal-400">Walk-in angle</p>
             {painExtras.primaryPainHeadline ? (
               <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
                 {painExtras.primaryPainHeadline}
@@ -228,7 +228,7 @@ export function PreCallBriefPanel({
         ) : null}
 
         {anchorFirst ? (
-          <PrimaryBlock kicker="Anchor first">
+          <PrimaryBlock kicker="First anchor">
             <p className="text-base font-medium leading-relaxed text-foreground sm:text-[1.0625rem]">{anchorFirst}</p>
           </PrimaryBlock>
         ) : null}
@@ -241,11 +241,11 @@ export function PreCallBriefPanel({
       </div>
 
       {/* Dominant CTA — strongest action on screen */}
-      <div className="mt-8 space-y-2">
+      <div className="mt-8 space-y-2.5 px-0.5">
         <button type="button" onClick={onContinue} className="btn-primary">
-          Start Proof Run →
+          Begin Proof Run →
         </button>
-        <p className="text-center text-xs text-muted">Proof in the room starts here.</p>
+        <p className="text-center text-xs font-medium text-muted">Step 3 · Owner-facing evidence and ask</p>
       </div>
 
       {/* SECONDARY: collapsed by default so it never fights the walk-in lines */}

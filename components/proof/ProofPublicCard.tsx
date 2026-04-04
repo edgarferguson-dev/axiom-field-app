@@ -32,14 +32,14 @@ export function ProofPublicCard({ started }: { started: boolean }) {
   return (
     <section
       className={cn(
-        "rounded-2xl border border-border/60 bg-card/40 px-5 py-5 shadow-soft ring-1 ring-foreground/[0.04]",
+        "rounded-2xl border border-border/55 bg-gradient-to-b from-card/90 to-card/50 px-5 py-5 shadow-soft ring-1 ring-foreground/[0.05]",
         "backdrop-blur-sm"
       )}
-      aria-label="What to establish with the buyer"
+      aria-label="Proof focus for this visit"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">In the room</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Proof focus</p>
           {block ? (
             <>
               <h3 className="text-balance text-lg font-semibold tracking-tight text-foreground sm:text-xl">

@@ -58,7 +58,7 @@ export function ScoutIntakeSection({
   directoryAutofillAt,
 }: ScoutIntakeSectionProps) {
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form onSubmit={onSubmit} className="scout-intake-surface space-y-5 p-4 sm:space-y-6 sm:p-6">
       <BusinessLookupPanel
         form={form}
         onChange={onFormChange}
@@ -67,17 +67,17 @@ export function ScoutIntakeSection({
       />
 
       {directoryAutofillAt != null ? (
-        <p className="rounded-lg border border-border/80 bg-card/60 px-3 py-2 text-xs text-muted">
-          Directory data applied — edit any field anytime. The brief uses whatever is on screen when you generate (not the raw search row).
+        <p className="rounded-xl border border-accent/20 bg-accent/[0.06] px-3.5 py-2.5 text-xs font-medium leading-snug text-foreground/90">
+          Profile loaded from search — edit anything. The brief snapshots what you see when you lock it.
         </p>
       ) : null}
 
       {/* RFC 6: sections stay rep-controlled — we never call open/close programmatically. */}
-      <details className="group rounded-2xl border border-border bg-card shadow-soft">
+      <details className="group rounded-2xl border border-border/90 bg-card/80 shadow-sm ring-1 ring-foreground/[0.04]">
         <summary className="cursor-pointer list-none px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted">Lead context</span>
-          <span className="mt-1 block text-sm text-foreground">System &amp; source (optional — add during visit if needed)</span>
-          <span className="mt-2 inline-block text-xs font-semibold text-accent group-open:hidden">Tap to expand</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">Lead context</span>
+          <span className="mt-1 block text-sm font-medium text-foreground">System &amp; source — optional</span>
+          <span className="mt-2 inline-block text-xs font-semibold text-accent group-open:hidden">Expand</span>
         </summary>
         <div className="grid gap-4 border-t border-border px-5 pb-5 pt-4 sm:grid-cols-2 sm:px-6">
           <FormSelect
@@ -126,24 +126,24 @@ export function ScoutIntakeSection({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
               />
             </svg>
-            <span className="text-sm text-accent">Building pre-call brief…</span>
+            <span className="text-sm font-medium text-accent">Distilling brief…</span>
           </div>
         ) : (
           <button
             type="submit"
             disabled={!canScan || loading || engagementGate?.decision === "WALK"}
-            className="min-w-[200px] flex-1 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-40"
+            className="min-h-[52px] min-w-[200px] flex-1 rounded-xl bg-accent px-5 py-3.5 text-sm font-semibold text-white shadow-glow transition hover:opacity-90 disabled:opacity-40"
           >
-            Generate strategy brief →
+            Lock brief →
           </button>
         )}
         {canScan && !loading && (
           <button
             type="button"
             onClick={onSkipToDemo}
-            className="rounded-xl border border-border px-4 py-3 text-sm text-muted transition hover:border-accent/40 hover:text-foreground"
+            className="min-h-[48px] rounded-xl border border-border bg-background/50 px-4 py-3 text-sm font-medium text-muted transition hover:border-accent/40 hover:text-foreground"
           >
-            Skip to live demo
+            Skip to Proof Run
           </button>
         )}
       </div>
@@ -156,14 +156,14 @@ export function ScoutIntakeSection({
             onClick={onContinueWithoutBrief}
             className="text-xs font-medium text-accent underline underline-offset-2"
           >
-            Continue without brief →
+            Continue without brief
           </button>
         </div>
       )}
 
       {!loading && canScan && !error && engagementGate?.decision !== "WALK" && (
-        <p className="text-center text-xs text-muted">
-          Review the decision gate, then generate the brief — one step at a time.
+        <p className="text-center text-xs font-medium text-muted">
+          Check the gate, then lock the brief — you&apos;re one tap from Proof Run.
         </p>
       )}
     </form>

@@ -28,7 +28,7 @@ export function HealthReportShareBeat({ tone = "default" }: { tone?: "default" |
           dani && "border-border/50 bg-[#1a1a1a]/90 text-white/80"
         )}
       >
-        Run a Places scout first to generate gaps — then this card fills with real numbers.
+        Run Scout first so gaps and neighborhood populate — then this report matches the Proof Run.
         <div className="mt-3">
           <Link href={`/session/${sessionId}/field-read`} className="text-accent underline">
             Open scout

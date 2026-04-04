@@ -22,14 +22,14 @@ function stageGuidance(
       return "Confirm appetite before numbers — then advance to pricing.";
     case "interactive-proof":
       return interactiveProofComplete
-        ? "Proof is complete. Advance when the buyer is aligned."
-        : "Complete the proof walkthrough together — then pricing unlocks.";
+        ? "Walkthrough complete. Advance when the owner is with you."
+        : "Finish the walkthrough together — then the ask unlocks.";
     case "pricing":
-      return "One start option — let them nod, then continue.";
+      return "One pilot on screen — let them nod, then continue.";
     case "health-report-share":
-      return "Offer to text them the report — keep it lightweight.";
+      return "Offer to text the report link — light touch.";
     case "presentation-actions":
-      return "Pick the path that matches the room. Start setup is the forward motion when they are ready.";
+      return "Match the room. Start setup stays the forward path when they are ready.";
     default:
       return null;
   }
@@ -219,7 +219,7 @@ export function PresentationEngine({
   const chapterIdx = narrativeChapterIndexForSlideType(slide.type);
 
   const shellClass = daniSurface
-    ? "relative w-full max-w-none overflow-hidden rounded-2xl bg-transparent px-3 py-5 sm:px-6 sm:py-8 md:px-10 md:py-10 lg:px-12"
+    ? "relative w-full max-w-none overflow-hidden rounded-2xl bg-transparent px-3 py-5 sm:px-6 sm:py-8 md:px-10 md:py-10 lg:px-12 ring-1 ring-transparent"
     : variant === "continuous"
       ? "relative overflow-hidden rounded-xl border border-border bg-surface p-4 shadow-soft sm:p-8"
       : "rounded-2xl border border-border bg-card p-4 shadow-soft sm:p-6";
@@ -243,8 +243,14 @@ export function PresentationEngine({
     <div className={variant === "continuous" ? "space-y-0" : "space-y-4"}>
       <div className={shellClass}>
         {daniSurface && (
-          <div className="mb-6 h-1 w-full overflow-hidden rounded-full bg-border sm:mb-8">
-            <div className="h-full rounded-full bg-accent-dark" style={{ width: `${progressPct}%` }} />
+          <div className="mb-5 sm:mb-7">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Proof run</p>
+              <span className="text-[10px] font-semibold tabular-nums text-muted">{progressPct}%</span>
+            </div>
+            <div className="h-1 w-full overflow-hidden rounded-full bg-border/90">
+              <div className="h-full rounded-full bg-accent-dark transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
+            </div>
           </div>
         )}
 
@@ -403,11 +409,11 @@ export function PresentationEngine({
                 daniSurface && "border-border/60 bg-card/50 px-5 py-4"
               )}
             >
-              <p className="ax-label">Commitment path</p>
+              <p className="ax-label">{daniSurface ? "The ask" : "Commitment"}</p>
               <p className={cn("mt-1 text-foreground", daniSurface ? "text-base font-medium sm:text-lg" : "text-sm")}>
                 {daniSurface
-                  ? "One lean start — next slide locks the move."
-                  : "One offer on screen — nod means you’re aligned."}
+                  ? "One pilot — next beat locks what happens after today."
+                  : "One pilot on screen — nod means you’re aligned."}
               </p>
             </div>
             {gapDiagnosis && activeOffer ? (
@@ -440,19 +446,49 @@ export function PresentationEngine({
               </div>
             ) : null}
             {slide.tiers.length === 1 ? (
-              <div className="mx-auto max-w-md rounded-xl border border-accent/25 bg-accent/[0.06] px-4 py-4 shadow-inner">
+              <div
+                className={cn(
+                  "mx-auto max-w-md rounded-2xl border px-5 py-5 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-inset ring-white/40 sm:px-6 sm:py-6",
+                  daniSurface
+                    ? "border-teal-500/35 bg-gradient-to-b from-teal-950/40 to-black/50 text-white"
+                    : "border-accent/30 bg-gradient-to-b from-accent/[0.09] to-surface ring-accent/5"
+                )}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-foreground">{slide.tiers[0]!.name}</p>
+                    <p
+                      className={cn(
+                        "text-[10px] font-bold uppercase tracking-[0.16em]",
+                        daniSurface ? "text-white/50" : "text-muted"
+                      )}
+                    >
+                      Selected pilot
+                    </p>
+                    <p className={cn("mt-1 text-base font-bold", daniSurface ? "text-white" : "text-foreground")}>
+                      {slide.tiers[0]!.name}
+                    </p>
                     {slide.tiers[0]!.subtitle ? (
-                      <p className="mt-0.5 text-xs text-muted">{slide.tiers[0]!.subtitle}</p>
+                      <p className={cn("mt-1 text-xs font-medium", daniSurface ? "text-white/55" : "text-muted")}>
+                        {slide.tiers[0]!.subtitle}
+                      </p>
                     ) : null}
                   </div>
-                  <p className="text-right text-lg font-black tabular-nums text-accent">{slide.tiers[0]!.price}</p>
+                  <p className="text-right text-xl font-black tabular-nums text-accent sm:text-2xl">{slide.tiers[0]!.price}</p>
                 </div>
-                <ul className="mt-3 space-y-1.5 border-t border-border/40 pt-3">
+                <ul
+                  className={cn(
+                    "mt-4 space-y-1.5 border-t pt-3",
+                    daniSurface ? "border-white/15" : "border-border/40"
+                  )}
+                >
                   {slide.tiers[0]!.highlights.map((h) => (
-                    <li key={h} className="flex items-start gap-2 text-xs text-foreground/90">
+                    <li
+                      key={h}
+                      className={cn(
+                        "flex items-start gap-2 text-xs",
+                        daniSurface ? "text-white/88" : "text-foreground/90"
+                      )}
+                    >
                       <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
                       {h}
                     </li>
@@ -485,8 +521,8 @@ export function PresentationEngine({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-[11px] text-muted sm:text-xs">
                 {slide.tiers.length === 1 || selectedTierId
-                  ? "Ready when they are — one tap forward."
-                  : "Select a tier to unlock continue."}
+                  ? "Ready when they are — one tap to continue the run."
+                  : "Pick a tier to continue."}
               </div>
 
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
@@ -636,7 +672,7 @@ export function PresentationEngine({
                 onClick={() => setIndex(pricingIdx)}
                 className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted transition hover:border-accent/30 hover:text-foreground"
               >
-                Skip to offer
+                Skip to ask
               </button>
             )}
           </div>

@@ -109,16 +109,18 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
   );
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5 shadow-soft sm:p-6">
-      <div className="mb-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Account</p>
-        <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Who you&apos;re visiting</h3>
-        <p className="mt-1 text-sm text-muted">Search Google (Brooklyn-biased), pick a row — form fills + gap scan runs.</p>
+    <section className="space-y-4 border-b border-border/55 pb-6">
+      <div className="mb-1">
+        <p className="proof-phase-eyebrow text-accent">Scout</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Merchant snapshot</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">
+          Search, tap a match — profile and gap scan populate. Edit anything before you lock the brief.
+        </p>
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-xl border border-border/80 bg-card/40 p-3">
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+        <div className="rounded-xl border border-border/80 bg-card/50 p-4 ring-1 ring-foreground/[0.03]">
+          <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
             Google Places
           </label>
           <input

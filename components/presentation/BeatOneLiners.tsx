@@ -15,8 +15,8 @@ export function BeatOneLiners({ slideType, variant = "default" }: BeatOneLinersP
 
   if (variant === "dani") {
     return (
-      <div className="mb-8 space-y-4 border-l-[3px] border-accent/50 pl-5 sm:mb-10 sm:pl-7">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-accent">
+      <div className="mb-8 space-y-4 border-l-[3px] border-accent-dark/60 pl-5 sm:mb-10 sm:pl-7">
+        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-accent-dark">
           {beat.id
             .split(/[-_]/g)
             .filter(Boolean)
@@ -40,7 +40,7 @@ export function BeatOneLiners({ slideType, variant = "default" }: BeatOneLinersP
 
   return (
     <div className="mb-6 space-y-3 rounded-xl border border-accent/25 bg-accent/[0.06] p-4 sm:p-5">
-      <p className="ax-label">Agreement goal</p>
+      <p className="ax-label">Establish in this beat</p>
       <p className="text-sm font-medium text-foreground">{beat.goal}</p>
       <ul className="space-y-3 border-t border-border/40 pt-4">
         {lines.map((line, i) => (

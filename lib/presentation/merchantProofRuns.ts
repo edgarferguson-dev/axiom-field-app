@@ -307,7 +307,7 @@ export function buildSharedPricing(ctx: MerchantBuildCtx, offer: OfferTemplate):
   const n = merchantShortName(ctx.business);
   return {
     type: "pricing",
-    kicker: "Offer",
+    kicker: "Ask",
     title: `One lean start for ${n}`,
     subtitle: offer.pilotSubtitle ?? "Prove it on your floor — pause or adjust after the window.",
     tiers: [offerToTier(offer)],

@@ -28,7 +28,7 @@ export type DemoPresentationSurfaceProps = {
 };
 
 /**
- * Buyer-facing column: structured presentation only (rep tactics stay private).
+ * Buyer-facing column: Proof Run sequence (rep tactics stay private).
  */
 export function DemoPresentationSurface({
   business,
@@ -75,7 +75,7 @@ export function DemoPresentationSurface({
             <div className="flex flex-wrap items-center gap-2">
               {!hideBuyerBadge && !dani && (
                 <span className="ax-label rounded-full border border-border bg-background px-2 py-0.5">
-                  Buyer view
+                  Owner view
                 </span>
               )}
               {started && (
@@ -99,13 +99,18 @@ export function DemoPresentationSurface({
                 dani ? "text-2xl sm:text-3xl md:text-4xl" : "ax-h2"
               )}
             >
-              {business?.name ?? "Presentation"}
+              {business?.name?.trim() ? business.name : "Proof Run"}
             </h2>
+            {dani && started && (
+              <p className="mt-2 max-w-xl text-sm font-medium leading-snug text-muted sm:text-base">
+                Evidence → ask → leave-behind report. One controlled sequence.
+              </p>
+            )}
             {!dani && (
               <p className="max-w-xl text-base text-muted">
                 {started
-                  ? "Run the proof in order — question, show, probe, then one clear ask."
-                  : "Start when the room is ready — short questions, strong proof, minimal talking."}
+                  ? "Advance the run in order — question, evidence, probe, then one clear ask."
+                  : "Start when the room is ready — tight questions, strong evidence, minimal talking."}
               </p>
             )}
             {business && !dani && (

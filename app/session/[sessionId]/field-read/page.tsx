@@ -285,11 +285,11 @@ export default function FieldReadPage({
 
   return (
     <SessionStageShell sessionId={params.sessionId}>
-      <div className="w-full space-y-16">
+      <div className="w-full space-y-10 sm:space-y-14">
         <ScoutStageHeader
-          kicker="Phase 1 · Pre-call intelligence"
-          title="Scout the account, capture constraints, get your brief"
-          description="Built for the parking lot and the lobby: lookup hints, field pressure, operational constraints — then a tight AI brief with opener, objection prep, and tablet timing before you walk in."
+          kicker="1 · Scout"
+          title="Scan the business. Lock the brief."
+          description="Pull the real profile from search, tighten constraints, generate a walk-in brief — then run a Proof Run with the owner. Built for phone-in-hand, not desk work."
         />
 
         <VisitMemoryPanel businessProfileHint={form} />

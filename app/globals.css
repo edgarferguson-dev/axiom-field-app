@@ -186,3 +186,21 @@ body.app-root {
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* Proof Run — phone-first surface rhythm (shared scout / brief / demo) */
+.proof-phase-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.scout-intake-surface {
+  border-radius: 1.25rem;
+  border: 1px solid var(--border);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.92) 0%, var(--surface) 42%, var(--surface) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 20px 50px -28px rgba(0, 0, 0, 0.22);
+}
