@@ -20,6 +20,11 @@ import type {
   PreCallResult,
   PreCallRequest,
 } from "@/types/pre-call";
+import type {
+  GapDiagnosis,
+  NeighborhoodComparison,
+  PainBriefExtras,
+} from "@/types/scoutIntel";
 export type {
   RiskBand,
   TabletGuidance,
@@ -30,6 +35,7 @@ export type {
   PreCallResult,
   PreCallRequest,
 } from "@/types/pre-call";
+export type { GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
 
 // Core phase flow
 export type SessionPhase =
@@ -255,6 +261,16 @@ export type Session = {
   activeMethodId: MethodId;
   /** RFC 3 — posture snapshot for POST / analytics; optional on legacy rehydrate. */
   methodStrategy: MethodStrategySnapshot | null;
+
+  /** Places scout + rules — gap list and leakage estimate. */
+  gapDiagnosis: GapDiagnosis | null;
+  neighborhoodComparison: NeighborhoodComparison | null;
+  scoutGeo: { lat: number; lng: number } | null;
+  placesPrimaryType: string | null;
+  /** Public buyer deck started (tab bar exit confirm). */
+  liveDemoBuyerStarted: boolean;
+  /** Pain-template brief sections (alongside `preCallIntel`). */
+  painBriefExtras: PainBriefExtras | null;
 };
 
 // ── Utility helpers ────────────────────────────────────────────────────────

@@ -21,8 +21,11 @@ import { buildCapturedConstraintLabels } from "@/lib/field/constraintsCapture";
 import { SCOUT_BUSINESS_TYPES } from "@/lib/field/scoutOptions";
 import { constraintsFromMap, emptyScoutProfile } from "@/lib/field/scoutForm";
 import { normalizePreCallIntel } from "@/lib/pre-call/normalizer";
-import type { PreCallSource } from "@/types/pre-call";
 import { VisitMemoryPanel } from "@/components/field/VisitMemoryPanel";
+import type { PlacesApplyMeta } from "@/lib/data/businessLookup/placesMeta";
+import { fetchNeighborhoodComparison } from "@/lib/data/neighborhoodPlaces";
+import { diagnoseGaps, mapPlacesPrimaryType } from "@/lib/field/gapDiagnosis";
+import { generatePainDrivenPreCall } from "@/lib/pre-call/painDrivenIntel";
 
 export default function FieldReadPage({
   params,
@@ -45,6 +48,13 @@ export default function FieldReadPage({
   const setObjectionTriggered = useSessionStore((s) => s.setObjectionTriggered);
   const initializeProofState = useSessionStore((s) => s.initializeProofState);
   const resetProofState = useSessionStore((s) => s.resetProofState);
+  const setGapDiagnosis = useSessionStore((s) => s.setGapDiagnosis);
+  const setNeighborhoodComparison = useSessionStore((s) => s.setNeighborhoodComparison);
+  const setScoutGeo = useSessionStore((s) => s.setScoutGeo);
+  const setPlacesPrimaryType = useSessionStore((s) => s.setPlacesPrimaryType);
+  const setPainBriefExtras = useSessionStore((s) => s.setPainBriefExtras);
+  const clearScoutDerivedFields = useSessionStore((s) => s.clearScoutDerivedFields);
+  const setLiveDemoBuyerStarted = useSessionStore((s) => s.setLiveDemoBuyerStarted);
 
   const [form, setForm] = useState<BusinessProfile>(emptyScoutProfile);
   const [fieldSnapshot, setFieldSnapshotLocal] = useState<FieldSnapshotKey[]>([]);
@@ -72,7 +82,7 @@ export default function FieldReadPage({
 
   /** RFC 6 — merge directory/places into form + session; rep edits after this stay authoritative. */
   const handleDirectoryApply = useCallback(
-    (next: BusinessProfile) => {
+    async (next: BusinessProfile, meta?: PlacesApplyMeta) => {
       const constraintRows = constraintsFromMap(constraintMap);
       const labels = buildCapturedConstraintLabels(fieldSnapshot, constraintRows);
       setForm(next);
@@ -82,8 +92,39 @@ export default function FieldReadPage({
         notes: undefined,
       });
       setDirectoryAutofillAt(Date.now());
+
+      const primaryType = meta?.primaryType ?? null;
+      setPlacesPrimaryType(primaryType);
+      const lat = meta?.latitude;
+      const lng = meta?.longitude;
+      if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        setScoutGeo({ lat, lng });
+        const categoryLabel = next.type?.trim() || mapPlacesPrimaryType(primaryType ?? undefined);
+        const n = await fetchNeighborhoodComparison({
+          categoryLabel,
+          lat,
+          lng,
+          excludeBusinessName: next.name,
+        });
+        setNeighborhoodComparison(n);
+      } else {
+        setScoutGeo(null);
+        setNeighborhoodComparison(null);
+      }
+
+      const gaps = diagnoseGaps(next, primaryType ?? undefined);
+      setGapDiagnosis(gaps);
     },
-    [constraintMap, fieldSnapshot, setBusiness, setDirectoryAutofillAt]
+    [
+      constraintMap,
+      fieldSnapshot,
+      setBusiness,
+      setDirectoryAutofillAt,
+      setGapDiagnosis,
+      setNeighborhoodComparison,
+      setPlacesPrimaryType,
+      setScoutGeo,
+    ]
   );
 
   useEffect(() => {
@@ -160,33 +201,17 @@ export default function FieldReadPage({
       capturedConstraintLabels: labels.length ? labels : undefined,
     };
     try {
-      const res = await fetch("/api/pre-call", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Send constraints + fieldSnapshot so the server can run a context-aware
-        // fallback if the AI call fails — the route always returns 200 + valid intel.
-        body: JSON.stringify({
-          ...payload,
-          fieldEngagementDecision: gate,
-          constraints: constraintRows,
-          fieldSnapshot,
-        }),
-      });
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      const data = (await res.json()) as PreCallIntel & { source?: PreCallSource };
-      const { source: briefSource, ...rest } = data;
-      const normalized = normalizePreCallIntel(rest);
-      if (!normalized) throw new Error("Unusable response shape");
+      const gaps =
+        session?.gapDiagnosis ?? diagnoseGaps(payload, session?.placesPrimaryType ?? undefined);
+      if (!session?.gapDiagnosis) setGapDiagnosis(gaps);
+      const neighborhood = session?.neighborhoodComparison ?? null;
+      const { intel: normalized, extras } = generatePainDrivenPreCall(payload, gaps, neighborhood);
+      setPainBriefExtras(extras);
       setIntel(normalized);
-      setPreCallIntel(
-        normalized,
-        briefSource === "ai" || briefSource === "deterministic" ? briefSource : null
-      );
+      setPreCallIntel(normalized, "deterministic");
       persistConstraintsToStore(fieldSnapshot, constraintMap, payload);
     } catch {
-      // Only reached on network failure or a true 5xx — the route handles AI
-      // failures internally by returning deterministic fallback intel.
-      setError("Could not reach the server. You can still continue manually.");
+      setError("Could not build the pain-driven brief. Check inputs and try again.");
     } finally {
       setLoading(false);
     }
@@ -206,6 +231,7 @@ export default function FieldReadPage({
     };
     persistConstraintsToStore(fieldSnapshot, constraintMap, profile);
     initializeProofState();
+    setLiveDemoBuyerStarted(false);
     setPhase("live-demo");
     router.push(`/session/${params.sessionId}/demo`);
   }
@@ -216,6 +242,8 @@ export default function FieldReadPage({
     setFieldSnapshotLocal([]);
     setConstraintMap(new Map());
     setPreCallIntel(null, null);
+    setPainBriefExtras(null);
+    clearScoutDerivedFields();
     setDirectoryAutofillAt(null);
     setFieldEngagementDecision(null);
     setCloseState(null);
@@ -293,6 +321,8 @@ export default function FieldReadPage({
           <ScoutBriefSection
             intel={intel}
             briefSource={preCallIntelSource}
+            painExtras={session?.painBriefExtras ?? null}
+            neighborhood={session?.neighborhoodComparison ?? null}
             onContinue={goToDemo}
             onNewScout={handleRescan}
           />

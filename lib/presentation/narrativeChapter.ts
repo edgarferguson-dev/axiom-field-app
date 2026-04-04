@@ -22,7 +22,11 @@ export const NARRATIVE_CHAPTERS: { id: string; label: string; match: (t: SlideTy
       t === "business-snapshot",
   },
   { id: "offer", label: "Offer", match: (t) => t === "pricing" },
-  { id: "commit", label: "Next step", match: (t) => t === "presentation-actions" },
+  {
+    id: "commit",
+    label: "Next step",
+    match: (t) => t === "presentation-actions" || t === "health-report-share",
+  },
 ];
 
 export function narrativeChapterIndexForSlideType(type: SlideType): number {

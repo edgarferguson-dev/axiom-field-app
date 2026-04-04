@@ -6,6 +6,7 @@ import {
   type PresentationVisualPattern,
 } from "@/lib/presentation/assets";
 import { MerchantProofVisual } from "@/components/presentation/merchant/MerchantProofVisuals";
+import { DaniPhoneSteps } from "@/components/presentation/proof-beats/DaniPhoneSteps";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
 
@@ -126,6 +127,7 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
   const dani = tone === "dani";
   const businessName = useSessionStore((s) => s.session?.business?.name);
   const businessType = useSessionStore((s) => s.session?.business?.type?.trim() ?? "");
+  const gapDiagnosis = useSessionStore((s) => s.session?.gapDiagnosis);
   const statContextLine = businessType ? `How ${businessType} owners usually describe the leak` : undefined;
 
   const mv = "merchantVisual" in slide ? slide.merchantVisual : undefined;
@@ -138,6 +140,29 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
     if (mv) {
       return (
         <div className={cn("space-y-5", dani && "space-y-6")}>
+          {dani && gapDiagnosis?.gaps?.length ? (
+            <div className="card-secondary space-y-2 !bg-[#1a1a1a]">
+              <p className="text-caption !text-teal-400">Pain mirror</p>
+              <p className="text-title !text-lg">{businessName}</p>
+              <ul className="space-y-2">
+                {gapDiagnosis.gaps.map((g) => (
+                  <li
+                    key={g.type}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg px-3 py-2 text-sm",
+                      g.severity === "high" ? "bg-red-500/15 text-white" : "bg-amber-500/10 text-white/90"
+                    )}
+                  >
+                    <span>{g.label}</span>
+                    <span className="text-xs font-bold text-white/60">{g.severity}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-white/55">
+                ~${gapDiagnosis.estimatedMonthlyLeakage.toLocaleString()}/mo estimated leakage
+              </p>
+            </div>
+          ) : null}
           <MerchantProofVisual surface={mv} {...merchantProps} />
           <div className="rounded-xl border border-accent/20 bg-accent/[0.05] px-4 py-3 sm:px-5">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Takeaway</p>
@@ -168,6 +193,9 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
     if (mv) {
       return (
         <div className={cn("space-y-5", dani && "space-y-6")}>
+          {dani ? (
+            <DaniPhoneSteps variant="fix" businessName={businessName ?? "us"} className="sm:max-w-[300px]" />
+          ) : null}
           <MerchantProofVisual surface={mv} {...merchantProps} />
           <ol className="space-y-3">
             {slide.steps.map((s) => (
@@ -189,6 +217,9 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
     const pattern = slide.assetKey ? resolvePresentationVisualPattern(slide.assetKey) : "flow-three";
     return (
       <div className={cn("space-y-5", dani && "space-y-6")}>
+        {dani ? (
+          <DaniPhoneSteps variant="fix" businessName={businessName ?? "us"} className="sm:max-w-[300px]" />
+        ) : null}
         <VisualFrame pattern={pattern} />
         <ol className="space-y-3">
           {slide.steps.map((s) => (
@@ -212,6 +243,9 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
     if (mv) {
       return (
         <div className={cn("space-y-5", dani && "space-y-6")}>
+          {dani ? (
+            <DaniPhoneSteps variant="missed" businessName={businessName ?? ""} className="sm:max-w-[300px]" />
+          ) : null}
           <MerchantProofVisual surface={mv} {...merchantProps} />
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border/70 bg-background/50 p-4">
@@ -232,6 +266,9 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
     const pattern = slide.assetKey ? resolvePresentationVisualPattern(slide.assetKey) : "split-compare";
     return (
       <div className={cn("space-y-5", dani && "space-y-6")}>
+        {dani ? (
+          <DaniPhoneSteps variant="missed" businessName={businessName ?? ""} className="sm:max-w-[300px]" />
+        ) : null}
         <VisualFrame pattern={pattern} />
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-border/70 bg-background/50 p-4">
@@ -280,10 +317,28 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
   }
 
   if (slide.type === "decision-next") {
+    const featureCards = [
+      "Missed-call auto text-back",
+      "24/7 online booking",
+      "Automated review requests",
+      "Google profile optimization",
+    ];
     if (mv) {
       return (
         <div className={cn("space-y-4", dani && "space-y-5")}>
           <MerchantProofVisual surface={mv} {...merchantProps} />
+          {dani ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {featureCards.map((label) => (
+                <div
+                  key={label}
+                  className="rounded-xl border-l-4 border-teal-500 bg-[#1a1a1a]/90 px-4 py-3 text-sm font-medium text-white shadow-inner"
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className={cn("space-y-4 rounded-xl border border-border/60 bg-card/35 px-5 py-6", dani && "space-y-5 py-8")}>
             <p className={cn("text-lg font-semibold text-foreground", dani && "text-xl sm:text-2xl")}>{slide.bridge}</p>
             <p className="text-sm font-medium text-accent">{slide.takeaway}</p>
@@ -292,9 +347,23 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
       );
     }
     return (
-      <div className={cn("space-y-4 rounded-xl border border-border/60 bg-card/35 px-5 py-6", dani && "space-y-5 py-8")}>
-        <p className={cn("text-lg font-semibold text-foreground", dani && "text-xl sm:text-2xl")}>{slide.bridge}</p>
-        <p className="text-sm font-medium text-accent">{slide.takeaway}</p>
+      <div className={cn("space-y-4", dani && "space-y-5")}>
+        {dani ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {featureCards.map((label) => (
+              <div
+                key={label}
+                className="rounded-xl border-l-4 border-teal-500 bg-[#1a1a1a]/90 px-4 py-3 text-sm font-medium text-white shadow-inner"
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div className={cn("space-y-4 rounded-xl border border-border/60 bg-card/35 px-5 py-6", dani && "space-y-5 py-8")}>
+          <p className={cn("text-lg font-semibold text-foreground", dani && "text-xl sm:text-2xl")}>{slide.bridge}</p>
+          <p className="text-sm font-medium text-accent">{slide.takeaway}</p>
+        </div>
       </div>
     );
   }

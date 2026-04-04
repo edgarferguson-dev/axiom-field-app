@@ -1,15 +1,25 @@
 import type { PreCallIntel, PreCallSource } from "@/types/session";
+import type { NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
 import { PreCallBriefPanel } from "@/components/field-read/PreCallBriefPanel";
 
 type ScoutBriefSectionProps = {
   intel: PreCallIntel;
   /** RFC 6A — AI vs rules-based brief (compact rep signal). */
   briefSource: PreCallSource | null;
+  painExtras: PainBriefExtras | null;
+  neighborhood: NeighborhoodComparison | null;
   onContinue: () => void;
   onNewScout: () => void;
 };
 
-export function ScoutBriefSection({ intel, briefSource, onContinue, onNewScout }: ScoutBriefSectionProps) {
+export function ScoutBriefSection({
+  intel,
+  briefSource,
+  painExtras,
+  neighborhood,
+  onContinue,
+  onNewScout,
+}: ScoutBriefSectionProps) {
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -46,7 +56,12 @@ export function ScoutBriefSection({ intel, briefSource, onContinue, onNewScout }
           New scout
         </button>
       </div>
-      <PreCallBriefPanel intel={intel} onContinue={onContinue} />
+      <PreCallBriefPanel
+        intel={intel}
+        painExtras={painExtras}
+        neighborhood={neighborhood}
+        onContinue={onContinue}
+      />
     </div>
   );
 }

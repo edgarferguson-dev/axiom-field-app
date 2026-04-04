@@ -22,6 +22,7 @@ import {
   buildSharedPricing,
   type MerchantBuildCtx,
 } from "@/lib/presentation/merchantProofRuns";
+import { merchantShortName } from "@/lib/presentation/merchantContext";
 
 /**
  * Phase 7B — merchant proof run: five proof beats + bridge + single ask + commit.
@@ -33,9 +34,10 @@ type DeckSegment =
   | "impact"
   | "decision-next"
   | "pricing"
+  | "health-report-share"
   | "actions";
 
-type CoreBeat = Exclude<DeckSegment, "decision-next" | "pricing" | "actions">;
+type CoreBeat = Exclude<DeckSegment, "decision-next" | "pricing" | "health-report-share" | "actions">;
 
 function coreBeatOrder(mode: OpeningMode): CoreBeat[] {
   switch (mode) {
@@ -51,7 +53,7 @@ function coreBeatOrder(mode: OpeningMode): CoreBeat[] {
 }
 
 function segmentOrder(mode: OpeningMode): DeckSegment[] {
-  return [...coreBeatOrder(mode), "decision-next", "pricing", "actions"];
+  return [...coreBeatOrder(mode), "decision-next", "pricing", "health-report-share", "actions"];
 }
 
 type BuildCtx = MerchantBuildCtx;
@@ -95,6 +97,17 @@ function buildActions(ctx: BuildCtx): PresentationSlide {
   return { id: `${ctx.idPrefix}-actions`, ...body };
 }
 
+function buildHealthReportShare(ctx: BuildCtx): PresentationSlide {
+  const n = merchantShortName(ctx.business);
+  return {
+    id: `${ctx.idPrefix}-health-share`,
+    type: "health-report-share",
+    kicker: "Beat 6",
+    title: "Health report",
+    subtitle: `Preview and share a one-pager for ${n}.`,
+  };
+}
+
 function buildSegment(segment: DeckSegment, ctx: BuildCtx, offer: OfferTemplate): PresentationSlide {
   switch (segment) {
     case "proof-snapshot":
@@ -109,6 +122,8 @@ function buildSegment(segment: DeckSegment, ctx: BuildCtx, offer: OfferTemplate)
       return buildDecisionNext(ctx);
     case "pricing":
       return buildPricing(ctx, offer);
+    case "health-report-share":
+      return buildHealthReportShare(ctx);
     case "actions":
       return buildActions(ctx);
   }

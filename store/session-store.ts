@@ -19,6 +19,8 @@ import type {
   CloseOutcome,
   FieldSnapshotKey,
 } from "@/types/session";
+import type { FieldRepCard, GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
+import { DEFAULT_FIELD_REP_CARD } from "@/types/scoutIntel";
 import { createEmptyPresentation } from "@/types/presentation";
 import type { MaterialSummary } from "@/lib/flows/materialEngine";
 import { buildStrategyPackage } from "@/lib/flows/presentationEngine";
@@ -216,6 +218,16 @@ type SessionStore = {
   refreshDemoInsightLayer: () => void;
   refreshPostDemoInsights: () => void;
   resetCloseState: () => void;
+
+  fieldRepCard: FieldRepCard;
+  setFieldRepCard: (card: FieldRepCard) => void;
+  setGapDiagnosis: (v: GapDiagnosis | null) => void;
+  setNeighborhoodComparison: (v: NeighborhoodComparison | null) => void;
+  setScoutGeo: (v: { lat: number; lng: number } | null) => void;
+  setPlacesPrimaryType: (v: string | null) => void;
+  setLiveDemoBuyerStarted: (v: boolean) => void;
+  setPainBriefExtras: (v: PainBriefExtras | null) => void;
+  clearScoutDerivedFields: () => void;
 };
 
 function makeEmptySession(
@@ -259,6 +271,12 @@ function makeEmptySession(
     closeAssessment: null,
     activeMethodId: DEFAULT_METHOD_ID,
     methodStrategy: createInitialMethodStrategySnapshot(),
+    gapDiagnosis: null,
+    neighborhoodComparison: null,
+    scoutGeo: null,
+    placesPrimaryType: null,
+    liveDemoBuyerStarted: false,
+    painBriefExtras: null,
   };
 }
 
@@ -308,6 +326,7 @@ export const useSessionStore = create<SessionStore>()(
       offerTemplates: DEFAULT_OFFER_TEMPLATES,
       defaultOfferTemplateId: DEFAULT_OFFER_TEMPLATE_ID,
       postRunCaptures: [],
+      fieldRepCard: DEFAULT_FIELD_REP_CARD,
 
       setDemoViewMode: (demoViewMode) => set({ demoViewMode }),
       setBuyerState: (buyerState) => set({ buyerState }),
@@ -412,6 +431,42 @@ export const useSessionStore = create<SessionStore>()(
                 : null;
           return { session: { ...s.session, preCallIntel, preCallIntelSource } };
         }),
+
+      setFieldRepCard: (fieldRepCard) => set({ fieldRepCard }),
+
+      setGapDiagnosis: (gapDiagnosis) =>
+        set((s) => (s.session ? { session: { ...s.session, gapDiagnosis } } : s)),
+
+      setNeighborhoodComparison: (neighborhoodComparison) =>
+        set((s) => (s.session ? { session: { ...s.session, neighborhoodComparison } } : s)),
+
+      setScoutGeo: (scoutGeo) =>
+        set((s) => (s.session ? { session: { ...s.session, scoutGeo } } : s)),
+
+      setPlacesPrimaryType: (placesPrimaryType) =>
+        set((s) => (s.session ? { session: { ...s.session, placesPrimaryType } } : s)),
+
+      setLiveDemoBuyerStarted: (liveDemoBuyerStarted) =>
+        set((s) => (s.session ? { session: { ...s.session, liveDemoBuyerStarted } } : s)),
+
+      setPainBriefExtras: (painBriefExtras) =>
+        set((s) => (s.session ? { session: { ...s.session, painBriefExtras } } : s)),
+
+      clearScoutDerivedFields: () =>
+        set((s) =>
+          s.session
+            ? {
+                session: {
+                  ...s.session,
+                  gapDiagnosis: null,
+                  neighborhoodComparison: null,
+                  scoutGeo: null,
+                  placesPrimaryType: null,
+                  painBriefExtras: null,
+                },
+              }
+            : s
+        ),
 
       setFieldEngagementDecision: (fieldEngagementDecision) =>
         set((s) =>
@@ -523,7 +578,8 @@ export const useSessionStore = create<SessionStore>()(
         set((s) => {
           if (!s.session?.business) return s;
           const prev = s.session.presentation ?? createEmptyPresentation();
-          if (prev.generatedSlides.length > 0) return s;
+          const hasHealthBeat = prev.generatedSlides.some((sl) => sl.type === "health-report-share");
+          if (prev.generatedSlides.length > 0 && hasHealthBeat) return s;
           const material = prev.materialSummary ?? s.pendingPresentationMaterial ?? undefined;
           const strategy = buildStrategyPackage(
             s.session.business,
@@ -1088,7 +1144,7 @@ export const useSessionStore = create<SessionStore>()(
     }),
     {
       name: PERSIST_KEY_SESSION,
-      version: 21,
+      version: 22,
       storage: sessionPersistStorage,
       merge: (persistedState, currentState) => {
         if (persistedState == null || typeof persistedState !== "object") {
@@ -1112,6 +1168,9 @@ export const useSessionStore = create<SessionStore>()(
           merged.defaultOfferTemplateId = DEFAULT_OFFER_TEMPLATE_ID;
         }
         if (!Array.isArray(merged.postRunCaptures)) merged.postRunCaptures = [];
+        if (!merged.fieldRepCard || typeof merged.fieldRepCard !== "object") {
+          merged.fieldRepCard = DEFAULT_FIELD_REP_CARD;
+        }
         return merged;
       },
       onRehydrateStorage: () => (_state, error) => {
@@ -1209,6 +1268,12 @@ export const useSessionStore = create<SessionStore>()(
             if (s.directoryAutofillAt === undefined) {
               s.directoryAutofillAt = null;
             }
+            if (s.gapDiagnosis === undefined) s.gapDiagnosis = null;
+            if (s.neighborhoodComparison === undefined) s.neighborhoodComparison = null;
+            if (s.scoutGeo === undefined) s.scoutGeo = null;
+            if (s.placesPrimaryType === undefined) s.placesPrimaryType = null;
+            if (s.liveDemoBuyerStarted === undefined) s.liveDemoBuyerStarted = false;
+            if (s.painBriefExtras === undefined) s.painBriefExtras = null;
             // V13: `closeRecommendation` removed — embed into `closeAssessment.recommendation`
             if ("closeRecommendation" in s) {
               const cr = s.closeRecommendation as CloseRecommendation | null | undefined;

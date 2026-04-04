@@ -7,6 +7,7 @@ import type {
 } from "@/lib/flows/interactiveDemoEngine";
 import { InteractiveProof } from "@/components/presentation/InteractiveProof";
 import { ProofLedBeat } from "@/components/presentation/ProofLedBeat";
+import { HealthReportShareBeat } from "@/components/presentation/HealthReportShareBeat";
 import { cn } from "@/lib/utils/cn";
 
 type SlideRendererProps = {
@@ -31,6 +32,8 @@ function visualPlaceholderLabel(type: PresentationSlide["type"]): string {
       return "Proof visual — pattern loads from pack registry.";
     case "decision-next":
       return "Decision bridge — short, one motion.";
+    case "health-report-share":
+      return "Share — one-page recap for the owner.";
     case "cost-roi":
       return "Numbers — simple chart or rough math.";
     case "solution":
@@ -53,6 +56,10 @@ export function SlideRenderer({
   onSkipWalkthrough,
 }: SlideRendererProps) {
   const dani = tone === "dani";
+
+  if (slide.type === "health-report-share") {
+    return <HealthReportShareBeat tone={tone} />;
+  }
 
   if (
     slide.type === "proof-snapshot" ||

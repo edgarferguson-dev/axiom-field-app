@@ -10,6 +10,7 @@ import {
   getSessionFlowStep,
 } from "@/components/layout/session-flow-progress";
 import { LiveCoachingOverlay } from "@/components/coaching/LiveCoachingOverlay";
+import { SessionBottomNav } from "@/components/layout/SessionBottomNav";
 import { useSessionStore } from "@/store/session-store";
 import { createEmptyPresentation } from "@/types/presentation";
 import { useSessionStoreHydrated } from "@/hooks/use-session-store-hydrated";
@@ -98,15 +99,18 @@ export default function SessionLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell>
-      <Topbar title="Axiom Field" subtitle={subtitle} />
-      <SessionFlowProgress
-        sessionId={sessionId}
-        flowMaxStep={session.flowMaxStep ?? 1}
-        presentation={presentation}
-        phase={session.phase}
-        preCallIntelReady={!!session.preCallIntel}
-      />
-      {children}
+      <div className="pb-[calc(80px+env(safe-area-inset-bottom,0px))]">
+        <Topbar title="Axiom Field" subtitle={subtitle} />
+        <SessionFlowProgress
+          sessionId={sessionId}
+          flowMaxStep={session.flowMaxStep ?? 1}
+          presentation={presentation}
+          phase={session.phase}
+          preCallIntelReady={!!session.preCallIntel}
+        />
+        {children}
+      </div>
+      <SessionBottomNav />
       <LiveCoachingOverlay />
     </AppShell>
   );
