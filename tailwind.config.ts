@@ -1,6 +1,9 @@
 import type { Config } from "tailwindcss";
 
-/** Colors align with `styles/tokens.ts` and `app/globals.css` — DaNI Method brand. */
+/**
+ * Semantic colors reference `app/globals.css` :root RGB triplets.
+ * Uses `rgb(var(--token) / <alpha-value>)` so Tailwind opacity modifiers work.
+ */
 const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,42 +13,71 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#F3F3F1",
-        surface: "#FFFFFF",
-        card: "#FFFFFF",
-        border: "#DCDCDC",
-        foreground: "#111111",
-        muted: "#3A3A3A",
-        accent: "#00A8A8",
-        "accent-dim": "#B8E8E8",
-        "accent-soft": "#E6FAFA",
-        "accent-dark": "#007B7B",
-        highlight: "#00CFCF",
-        "signal-green": "#1F7A1F",
-        "signal-yellow": "#8A7A38",
-        "signal-red": "#A61E1E",
+        background: "rgb(var(--color-background) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        card: "rgb(var(--color-card) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
+        foreground: "rgb(var(--color-foreground) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
+        accent: "rgb(var(--color-accent) / <alpha-value>)",
+        "accent-dim": "rgb(var(--color-accent-dim) / <alpha-value>)",
+        "accent-soft": "rgb(var(--color-accent-soft) / <alpha-value>)",
+        "accent-dark": "rgb(var(--color-accent-dark) / <alpha-value>)",
+        highlight: "rgb(var(--color-highlight) / <alpha-value>)",
+        "signal-green": "rgb(var(--color-signal-green) / <alpha-value>)",
+        "signal-yellow": "rgb(var(--color-signal-yellow) / <alpha-value>)",
+        "signal-red": "rgb(var(--color-signal-red) / <alpha-value>)",
+        ink: {
+          950: "rgb(var(--color-ink-950) / <alpha-value>)",
+          900: "rgb(var(--color-ink-900) / <alpha-value>)",
+          800: "rgb(var(--color-ink-800) / <alpha-value>)",
+          700: "rgb(var(--color-ink-700) / <alpha-value>)",
+          600: "rgb(var(--color-ink-600) / <alpha-value>)",
+          500: "rgb(var(--color-ink-500) / <alpha-value>)",
+          border: "rgb(var(--color-ink-border) / <alpha-value>)",
+        },
       },
       borderRadius: {
-        ax: "10px",
-        "ax-lg": "16px",
+        ax: "var(--radius-md)",
+        "ax-lg": "var(--radius-xl)",
+        "dani-xs": "var(--radius-xs)",
+        "dani-sm": "var(--radius-sm)",
+        "dani-md": "var(--radius-md)",
+        "dani-lg": "var(--radius-lg)",
+        "dani-xl": "var(--radius-xl)",
+        "dani-2xl": "var(--radius-2xl)",
+        "dani-3xl": "var(--radius-3xl)",
       },
       boxShadow: {
-        soft: "0 4px 20px rgba(0,0,0,0.045)",
-        medium: "0 8px 30px rgba(0,0,0,0.07)",
-        bar: "0 -4px 20px rgba(0,0,0,0.05)",
-        glow: "0 4px 24px rgba(0, 168, 168, 0.12)",
+        xs: "var(--shadow-xs)",
+        soft: "var(--shadow-soft)",
+        medium: "var(--shadow-md)",
+        elevated: "var(--shadow-elevated)",
+        bar: "0 -4px 20px rgba(0,0,0,0.06)",
+        glow: "var(--shadow-glow-accent)",
+        ink: "var(--shadow-ink)",
+        inset: "var(--shadow-inset-light)",
+      },
+      spacing: {
+        "ax-xs": "var(--space-1)",
+        "ax-sm": "var(--space-2)",
+        "ax-md": "var(--space-4)",
+        "ax-lg": "var(--space-6)",
+        "ax-xl": "var(--space-10)",
+        "ax-xxl": "var(--space-12)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "Inter", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
-      spacing: {
-        "ax-xs": "4px",
-        "ax-sm": "8px",
-        "ax-md": "16px",
-        "ax-lg": "24px",
-        "ax-xl": "40px",
-        "ax-xxl": "64px",
+      fontSize: {
+        "dani-xs": ["var(--text-xs)", { lineHeight: "var(--leading-normal)" }],
+        "dani-sm": ["var(--text-sm)", { lineHeight: "var(--leading-normal)" }],
+        "dani-base": ["var(--text-base)", { lineHeight: "var(--leading-normal)" }],
+        "dani-lg": ["var(--text-lg)", { lineHeight: "var(--leading-snug)" }],
+        "dani-xl": ["var(--text-xl)", { lineHeight: "var(--leading-snug)" }],
+        "dani-2xl": ["var(--text-2xl)", { lineHeight: "var(--leading-tight)" }],
+        "dani-3xl": ["var(--text-3xl)", { lineHeight: "var(--leading-tight)" }],
       },
       maxWidth: {
         ax: "72rem",

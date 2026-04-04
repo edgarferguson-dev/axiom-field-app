@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useSessionStore } from "@/store/session-store";
 import { resolveActiveOfferTemplate } from "@/lib/presentation/resolveActiveOfferTemplate";
 import { BusinessHealthReport } from "@/components/health/BusinessHealthReport";
+import { NEIGHBORHOOD_CONTEXT_IDLE } from "@/types/scoutIntel";
 import { cn } from "@/lib/utils/cn";
 
 export function HealthReportShareBeat({ tone = "default" }: { tone?: "default" | "dani" }) {
@@ -18,7 +19,7 @@ export function HealthReportShareBeat({ tone = "default" }: { tone?: "default" |
   const dani = tone === "dani";
   const business = session?.business;
   const gaps = session?.gapDiagnosis;
-  const neighborhood = session?.neighborhoodComparison ?? null;
+  const neighborhoodContext = session?.neighborhoodContext ?? NEIGHBORHOOD_CONTEXT_IDLE;
 
   if (!sessionId || !business || !gaps) {
     return (
@@ -28,7 +29,7 @@ export function HealthReportShareBeat({ tone = "default" }: { tone?: "default" |
           dani && "border-border/50 bg-[#1a1a1a]/90 text-white/80"
         )}
       >
-        Run Scout first so gaps and neighborhood populate — then this report matches the Proof Run.
+        Run Scout and lock a brief so gap diagnosis populates — neighborhood stats are optional when Places includes a pin.
         <div className="mt-3">
           <Link href={`/session/${sessionId}/field-read`} className="text-accent underline">
             Open scout
@@ -50,7 +51,7 @@ export function HealthReportShareBeat({ tone = "default" }: { tone?: "default" |
         sessionId={sessionId}
         scoutData={business}
         gapDiagnosis={gaps}
-        neighborhoodData={neighborhood}
+        neighborhoodContext={neighborhoodContext}
         offerData={{ monthlyFee: offer.monthlyFee, label: offer.label }}
         repCard={fieldRepCard}
         showSessionLink={false}

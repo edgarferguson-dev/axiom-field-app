@@ -35,49 +35,80 @@ type BusinessLookupPanelProps = {
    */
   onDirectoryApply?: (merged: BusinessProfile, meta?: PlacesApplyMeta) => void;
   businessTypes: string[];
+  /** Bias text search toward last pinned scout location (from a prior Places selection). */
+  searchLocationBias?: { lat: number; lng: number } | null;
 };
 
-export function BusinessLookupPanel({ form, onChange, onDirectoryApply, businessTypes }: BusinessLookupPanelProps) {
+export function BusinessLookupPanel({
+  form,
+  onChange,
+  onDirectoryApply,
+  businessTypes,
+  searchLocationBias,
+}: BusinessLookupPanelProps) {
   const [placesSearchQuery, setPlacesSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<BusinessLookupMatch[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
+
+  const searchOpts = useCallback(() => {
+    if (
+      searchLocationBias &&
+      Number.isFinite(searchLocationBias.lat) &&
+      Number.isFinite(searchLocationBias.lng)
+    ) {
+      return {
+        latitude: searchLocationBias.lat,
+        longitude: searchLocationBias.lng,
+        radiusMeters: 15_000,
+      };
+    }
+    return undefined;
+  }, [searchLocationBias]);
 
   const runSearch = useCallback(async () => {
     const q = form.name.trim();
     if (!q) return;
     setSearching(true);
+    setSearchError(null);
     setResults([]);
     try {
-      const r = await searchBusinesses(q);
-      setResults(r);
+      const r = await searchBusinesses(q, searchOpts());
+      setResults(r.matches);
+      if (r.error) setSearchError("Search unavailable — enter details manually or try again.");
     } finally {
       setSearching(false);
     }
-  }, [form.name]);
+  }, [form.name, searchOpts]);
 
   const handleGoogleSearch = useCallback(async () => {
     const q = placesSearchQuery.trim();
     if (!q) return;
     setSearching(true);
+    setSearchError(null);
     setResults([]);
     try {
-      const r = await searchBusinesses(q);
-      setResults(r);
+      const r = await searchBusinesses(q, searchOpts());
+      setResults(r.matches);
+      if (r.error) setSearchError("Search unavailable — enter details manually or try again.");
     } finally {
       setSearching(false);
     }
-  }, [placesSearchQuery]);
+  }, [placesSearchQuery, searchOpts]);
 
   const applyMatch = useCallback(
     async (m: BusinessLookupMatch) => {
       setEnriching(true);
+      setDetailsError(null);
       try {
         let enriched: BusinessLookupMatch = m;
         if (m.placeId) {
           const details = await fetchPlaceDetails(m.placeId);
           if (details) enriched = { ...m, ...details, name: details.name || m.name };
+          else setDetailsError("Could not load full place details — profile may be incomplete. Edit fields as needed.");
         }
         const merged = mergeFormWithDirectoryMatch(form, enriched, businessTypes);
         const meta: PlacesApplyMeta = {
@@ -164,6 +195,12 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
           </div>
         </div>
 
+        {searchError ? (
+          <p className="rounded-lg border border-signal-yellow/30 bg-signal-yellow/5 px-3 py-2 text-xs font-medium text-foreground">
+            {searchError}
+          </p>
+        ) : null}
+
         {results.length > 0 && (
           <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-border bg-card p-2">
             {results.map((r, i) => (
@@ -187,6 +224,10 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
 
         {enriching ? (
           <p className="text-xs font-medium text-accent">Loading place details…</p>
+        ) : null}
+
+        {detailsError ? (
+          <p className="text-xs font-medium text-signal-yellow">{detailsError}</p>
         ) : null}
 
         <FormSelect

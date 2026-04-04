@@ -26,7 +26,7 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body
-        className={`${fontSans.variable} min-h-screen bg-background font-sans text-foreground antialiased`}
+        className={`${fontSans.variable} app-root min-h-screen font-sans text-foreground antialiased`}
       >
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Axiom Field</p>

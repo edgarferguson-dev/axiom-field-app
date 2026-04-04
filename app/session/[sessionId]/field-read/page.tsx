@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
 import type { FormEvent, SyntheticEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SessionStageShell } from "@/components/session/SessionStageShell";
 import { ScoutStageHeader } from "@/components/session/scout/ScoutStageHeader";
 import { ScoutIntakeSection } from "@/components/session/scout/ScoutIntakeSection";
@@ -26,13 +26,16 @@ import type { PlacesApplyMeta } from "@/lib/data/businessLookup/placesMeta";
 import { fetchNeighborhoodComparison } from "@/lib/data/neighborhoodPlaces";
 import { diagnoseGaps, mapPlacesPrimaryType } from "@/lib/field/gapDiagnosis";
 import { generatePainDrivenPreCall } from "@/lib/pre-call/painDrivenIntel";
+import { NEIGHBORHOOD_CONTEXT_IDLE, neighborhoodIntelPayload } from "@/types/scoutIntel";
 
-export default function FieldReadPage({
+function FieldReadPageInner({
   params,
 }: {
   params: { sessionId: string };
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forceScout = searchParams.get("mode") === "scout";
   const session = useSessionStore((s) => s.session);
   const preCallIntelSource = useSessionStore((s) => s.session?.preCallIntelSource ?? null);
   const setBusiness = useSessionStore((s) => s.setBusiness);
@@ -49,7 +52,7 @@ export default function FieldReadPage({
   const initializeProofState = useSessionStore((s) => s.initializeProofState);
   const resetProofState = useSessionStore((s) => s.resetProofState);
   const setGapDiagnosis = useSessionStore((s) => s.setGapDiagnosis);
-  const setNeighborhoodComparison = useSessionStore((s) => s.setNeighborhoodComparison);
+  const setNeighborhoodContext = useSessionStore((s) => s.setNeighborhoodContext);
   const setScoutGeo = useSessionStore((s) => s.setScoutGeo);
   const setPlacesPrimaryType = useSessionStore((s) => s.setPlacesPrimaryType);
   const setPainBriefExtras = useSessionStore((s) => s.setPainBriefExtras);
@@ -97,23 +100,37 @@ export default function FieldReadPage({
       setPlacesPrimaryType(primaryType);
       const lat = meta?.latitude;
       const lng = meta?.longitude;
+
+      const gaps = diagnoseGaps(next, primaryType ?? undefined);
+      setGapDiagnosis(gaps);
+
       if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
         setScoutGeo({ lat, lng });
+        setNeighborhoodContext({ status: "loading" });
         const categoryLabel = next.type?.trim() || mapPlacesPrimaryType(primaryType ?? undefined);
-        const n = await fetchNeighborhoodComparison({
+        const outcome = await fetchNeighborhoodComparison({
           categoryLabel,
           lat,
           lng,
           excludeBusinessName: next.name,
         });
-        setNeighborhoodComparison(n);
+        if (outcome.kind === "success") {
+          setNeighborhoodContext({ status: "success", data: outcome.data });
+        } else if (outcome.kind === "empty") {
+          setNeighborhoodContext({
+            status: "empty",
+            detail: "No similar listings in this search radius — optional Maps snapshot.",
+          });
+        } else {
+          setNeighborhoodContext({
+            status: "error",
+            detail: "Area comparison unavailable — diagnosis and brief stay the same.",
+          });
+        }
       } else {
         setScoutGeo(null);
-        setNeighborhoodComparison(null);
+        setNeighborhoodContext(NEIGHBORHOOD_CONTEXT_IDLE);
       }
-
-      const gaps = diagnoseGaps(next, primaryType ?? undefined);
-      setGapDiagnosis(gaps);
     },
     [
       constraintMap,
@@ -121,11 +138,29 @@ export default function FieldReadPage({
       setBusiness,
       setDirectoryAutofillAt,
       setGapDiagnosis,
-      setNeighborhoodComparison,
+      setNeighborhoodContext,
       setPlacesPrimaryType,
       setScoutGeo,
     ]
   );
+
+  /** Keep stored gap diagnosis aligned with the live form (deterministic, no neighborhood required). */
+  useEffect(() => {
+    if (!session) return;
+    if (form.name.trim().length < 1 || form.type.trim().length < 1) return;
+    const g = diagnoseGaps(form, session.placesPrimaryType ?? undefined);
+    setGapDiagnosis(g);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- primitives in deps only; omit `session`/`form` to avoid loops when gap slice updates
+  }, [
+    session?.id,
+    session?.placesPrimaryType,
+    form.name,
+    form.type,
+    form.website,
+    form.rating,
+    form.reviewCount,
+    setGapDiagnosis,
+  ]);
 
   useEffect(() => {
     if (!session) return;
@@ -201,10 +236,11 @@ export default function FieldReadPage({
       capturedConstraintLabels: labels.length ? labels : undefined,
     };
     try {
-      const gaps =
-        session?.gapDiagnosis ?? diagnoseGaps(payload, session?.placesPrimaryType ?? undefined);
-      if (!session?.gapDiagnosis) setGapDiagnosis(gaps);
-      const neighborhood = session?.neighborhoodComparison ?? null;
+      const gaps = diagnoseGaps(payload, session?.placesPrimaryType ?? undefined);
+      setGapDiagnosis(gaps);
+      const neighborhood = neighborhoodIntelPayload(
+        session?.neighborhoodContext ?? NEIGHBORHOOD_CONTEXT_IDLE
+      );
       const { intel: normalized, extras } = generatePainDrivenPreCall(payload, gaps, neighborhood);
       setPainBriefExtras(extras);
       setIntel(normalized);
@@ -294,7 +330,7 @@ export default function FieldReadPage({
 
         <VisitMemoryPanel businessProfileHint={form} />
 
-        {!intel && (
+        {(!intel || forceScout) && (
           <ScoutIntakeSection
             form={form}
             onFormChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
@@ -314,15 +350,16 @@ export default function FieldReadPage({
             canShowEngagementGate={canScan}
             onDirectoryApply={handleDirectoryApply}
             directoryAutofillAt={directoryAutofillAt}
+            searchLocationBias={session?.scoutGeo ?? null}
           />
         )}
 
-        {intel && (
+        {intel && !forceScout && (
           <ScoutBriefSection
             intel={intel}
             briefSource={preCallIntelSource}
             painExtras={session?.painBriefExtras ?? null}
-            neighborhood={session?.neighborhoodComparison ?? null}
+            neighborhoodContext={session?.neighborhoodContext ?? NEIGHBORHOOD_CONTEXT_IDLE}
             gapDiagnosis={session?.gapDiagnosis ?? null}
             businessProfile={session?.business ?? null}
             onContinue={goToDemo}
@@ -331,5 +368,19 @@ export default function FieldReadPage({
         )}
       </div>
     </SessionStageShell>
+  );
+}
+
+export default function FieldReadPage(props: { params: { sessionId: string } }) {
+  return (
+    <Suspense
+      fallback={
+        <SessionStageShell sessionId={props.params.sessionId}>
+          <div className="py-12 text-sm text-muted">Loading scout…</div>
+        </SessionStageShell>
+      }
+    >
+      <FieldReadPageInner {...props} />
+    </Suspense>
   );
 }

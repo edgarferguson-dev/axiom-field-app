@@ -35,6 +35,8 @@ type ScoutIntakeSectionProps = {
   onDirectoryApply?: (merged: BusinessProfile, meta?: PlacesApplyMeta) => void;
   /** RFC 6 — unix ms when a directory row was applied; drives compact hint only. */
   directoryAutofillAt: number | null;
+  /** Last Places pin — biases next text searches toward that area. */
+  searchLocationBias?: { lat: number; lng: number } | null;
 };
 
 export function ScoutIntakeSection({
@@ -56,6 +58,7 @@ export function ScoutIntakeSection({
   canShowEngagementGate,
   onDirectoryApply,
   directoryAutofillAt,
+  searchLocationBias,
 }: ScoutIntakeSectionProps) {
   return (
     <form onSubmit={onSubmit} className="scout-intake-surface space-y-5 p-4 sm:space-y-6 sm:p-6">
@@ -64,6 +67,7 @@ export function ScoutIntakeSection({
         onChange={onFormChange}
         onDirectoryApply={onDirectoryApply}
         businessTypes={[...businessTypes]}
+        searchLocationBias={searchLocationBias}
       />
 
       {directoryAutofillAt != null ? (

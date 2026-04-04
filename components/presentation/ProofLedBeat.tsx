@@ -9,9 +9,10 @@ import { MerchantProofVisual } from "@/components/presentation/merchant/Merchant
 import {
   GapChipList,
   LeakageBarPoster,
-  NeighborhoodComparePoster,
   RatingGapStrip,
 } from "@/components/presentation/controlled/DiagnosisVisuals";
+import { NeighborhoodContextSlot } from "@/components/field-read/NeighborhoodContextSlot";
+import { NEIGHBORHOOD_CONTEXT_IDLE } from "@/types/scoutIntel";
 import { DaniPhoneSteps } from "@/components/presentation/proof-beats/DaniPhoneSteps";
 import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
 import { useSessionStore } from "@/store/session-store";
@@ -137,7 +138,10 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
   const businessRating = useSessionStore((s) => s.session?.business?.rating);
   const businessReviewCount = useSessionStore((s) => s.session?.business?.reviewCount);
   const gapDiagnosis = useSessionStore((s) => s.session?.gapDiagnosis);
-  const neighborhood = useSessionStore((s) => s.session?.neighborhoodComparison ?? null);
+  const neighborhoodContext = useSessionStore(
+    (s) => s.session?.neighborhoodContext ?? NEIGHBORHOOD_CONTEXT_IDLE
+  );
+  const showNearbyColumn = neighborhoodContext.status !== "idle";
   const statContextLine = businessType ? `How ${businessType} owners usually describe the leak` : undefined;
 
   const mv = "merchantVisual" in slide ? slide.merchantVisual : undefined;
@@ -157,9 +161,14 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
                 {businessName ? <p className="text-title mt-1 !text-lg text-white">{businessName}</p> : null}
               </div>
               <GapChipList diagnosis={gapDiagnosis} />
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div
+                className={cn(
+                  "grid gap-3",
+                  showNearbyColumn ? "sm:grid-cols-2" : "grid-cols-1"
+                )}
+              >
                 <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} />
-                {neighborhood ? <NeighborhoodComparePoster data={neighborhood} /> : null}
+                {showNearbyColumn ? <NeighborhoodContextSlot context={neighborhoodContext} /> : null}
               </div>
               <RatingGapStrip
                 rating={parseScoutRating(businessRating)}

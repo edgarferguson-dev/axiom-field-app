@@ -14,6 +14,7 @@ import { createDemoPresentationCallbacks } from "@/lib/demo/presentationCallback
 import type { PresentationEndAction } from "@/components/presentation/PresentationEngine";
 import type { CoachingPrompt } from "@/types/session";
 import { cn } from "@/lib/utils/cn";
+import { canEnterProofRun } from "@/lib/proofRun/canEnterProofRun";
 
 export default function DemoPage({
   params,
@@ -42,6 +43,8 @@ export default function DemoPage({
   const liveSignal = useSessionStore((s) => s.signal);
   const buyerState = useSessionStore((s) => s.buyerState);
   const setLiveDemoBuyerStarted = useSessionStore((s) => s.setLiveDemoBuyerStarted);
+  const proofRunDispatch = useSessionStore((s) => s.proofRunDispatch);
+  const setPresentationActiveSlideIndex = useSessionStore((s) => s.setPresentationActiveSlideIndex);
 
   useEffect(() => {
     if (!session) return;
@@ -74,6 +77,11 @@ export default function DemoPage({
   const [proceedToPricingSignal, setProceedToPricingSignal] = useState(0);
 
   useEffect(() => {
+    if (started) return;
+    setPresentationActiveSlideIndex(0);
+  }, [session?.id, started, setPresentationActiveSlideIndex]);
+
+  useEffect(() => {
     if (activePrompt?.signal) {
       setSignal(activePrompt.signal);
     }
@@ -91,12 +99,22 @@ export default function DemoPage({
     [addSignal, addObjection, addSalesStep, addCoachingPrompt, setSignal]
   );
 
+  const canStartProofRun = session ? canEnterProofRun(session) : false;
+
   const handleStart = useCallback(() => {
+    if (!canStartProofRun) return;
+    proofRunDispatch({ type: "start" });
     markStarted();
     setPhase("live-demo");
     setStarted(true);
     setLiveDemoBuyerStarted(true);
-  }, [markStarted, setPhase, setLiveDemoBuyerStarted]);
+  }, [
+    canStartProofRun,
+    proofRunDispatch,
+    markStarted,
+    setPhase,
+    setLiveDemoBuyerStarted,
+  ]);
 
   const handleGetCoaching = useCallback(async () => {
     if (!session?.business || !session?.preCallIntel) return;
@@ -119,9 +137,11 @@ export default function DemoPage({
   }, [session, addCoachingPrompt]);
 
   const handleEndSession = useCallback(() => {
+    useSessionStore.getState().proofRunDispatch({ type: "exit", reason: "private_end_session" });
+    setLiveDemoBuyerStarted(false);
     setPhase("offer-fit");
     router.push(`/session/${params.sessionId}/offer-fit`);
-  }, [setPhase, router, params.sessionId]);
+  }, [setPhase, router, params.sessionId, setLiveDemoBuyerStarted]);
 
   const handleJumpToPricing = useCallback(() => {
     setProceedToPricingSignal((n) => n + 1);
@@ -130,6 +150,11 @@ export default function DemoPage({
   const handlePresentationAction = useCallback(
     (action: PresentationEndAction) => {
       const id = params.sessionId;
+      useSessionStore.getState().proofRunDispatch({
+        type: "exit",
+        reason: `presentation_action:${action}`,
+      });
+      setLiveDemoBuyerStarted(false);
       switch (action) {
         case "start-setup":
           addSignal("green");
@@ -163,16 +188,33 @@ export default function DemoPage({
           break;
       }
     },
-    [params.sessionId, addSignal, setSignal, setPhase, router, setCloseOutcome, markCompleted]
+    [
+      params.sessionId,
+      addSignal,
+      setSignal,
+      setPhase,
+      router,
+      setCloseOutcome,
+      markCompleted,
+      setLiveDemoBuyerStarted,
+    ]
   );
 
   const showCommandBar = started && dealSignal === "green" && commandMode;
 
   const handleOpenAccount = useCallback(() => {
+    useSessionStore.getState().proofRunDispatch({ type: "exit", reason: "command_open_account" });
+    setLiveDemoBuyerStarted(false);
     setPresentationOpenAccountStarted(true);
     setPhase("offer-fit");
     router.push(`/session/${params.sessionId}/offer-fit`);
-  }, [setPresentationOpenAccountStarted, setPhase, router, params.sessionId]);
+  }, [
+    setPresentationOpenAccountStarted,
+    setPhase,
+    router,
+    params.sessionId,
+    setLiveDemoBuyerStarted,
+  ]);
 
   const handleReinforceValue = useCallback(() => {
     handleJumpToPricing();
@@ -206,6 +248,8 @@ export default function DemoPage({
             proceedToPricingSignal={proceedToPricingSignal}
             presentationHandlers={presentationHandlers}
             onPresentationAction={handlePresentationAction}
+            sessionId={params.sessionId}
+            canStartProofRun={canStartProofRun}
           />
         ) : (
           <PrivateScreen

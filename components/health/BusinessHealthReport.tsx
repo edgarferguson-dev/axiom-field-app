@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import type { BusinessProfile } from "@/types/session";
-import type { FieldRepCard, GapDiagnosis, NeighborhoodComparison } from "@/types/scoutIntel";
+import type { FieldRepCard, GapDiagnosis, NeighborhoodComparisonState } from "@/types/scoutIntel";
+import { neighborhoodPosterPayload } from "@/types/scoutIntel";
 import { extractNeighborhood } from "@/lib/field/extractNeighborhood";
 import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
 import {
@@ -18,8 +19,9 @@ export function BusinessHealthReport(props: {
   sessionId: string;
   scoutData: BusinessProfile;
   gapDiagnosis: GapDiagnosis;
-  neighborhoodData: NeighborhoodComparison | null;
-  offerData: OfferSlice;
+  neighborhoodContext: NeighborhoodComparisonState;
+  /** Optional — scout completion does not depend on a configured offer template. */
+  offerData?: OfferSlice | null;
   repCard: FieldRepCard;
   /** When false, omit link back to session (standalone / embed). */
   showSessionLink?: boolean;
@@ -28,7 +30,7 @@ export function BusinessHealthReport(props: {
     sessionId,
     scoutData,
     gapDiagnosis,
-    neighborhoodData,
+    neighborhoodContext,
     offerData,
     repCard,
     showSessionLink = true,
@@ -37,6 +39,7 @@ export function BusinessHealthReport(props: {
   const googleRating = parseScoutRating(scoutData.rating);
   const reviewCount = parseScoutReviewCount(scoutData.reviewCount);
   const hood = extractNeighborhood(scoutData.address);
+  const neighborhoodPoster = neighborhoodPosterPayload(neighborhoodContext);
 
   const reportUrl =
     typeof window !== "undefined"
@@ -105,9 +108,9 @@ export function BusinessHealthReport(props: {
         </p>
       </section>
 
-      {neighborhoodData ? (
+      {neighborhoodPoster ? (
         <section className="mb-5">
-          <NeighborhoodComparePoster data={neighborhoodData} />
+          <NeighborhoodComparePoster data={neighborhoodPoster} />
         </section>
       ) : null}
 
@@ -128,9 +131,17 @@ export function BusinessHealthReport(props: {
         </ul>
         <div className="mt-5 border-t border-white/10 pt-4 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/50">Selected offer</p>
-          <p className="mt-1 text-lg font-bold text-white">{offerData.label}</p>
-          <p className="text-2xl font-black tabular-nums text-teal-300">${offerData.monthlyFee}/mo</p>
-          <p className="mt-1 text-xs text-white/50">Free setup · No long contract</p>
+          {offerData ? (
+            <>
+              <p className="mt-1 text-lg font-bold text-white">{offerData.label}</p>
+              <p className="text-2xl font-black tabular-nums text-teal-300">${offerData.monthlyFee}/mo</p>
+              <p className="mt-1 text-xs text-white/50">Free setup · No long contract</p>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-white/60">
+              Configure a pilot offer in settings to show pricing on this card.
+            </p>
+          )}
         </div>
       </section>
 

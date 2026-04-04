@@ -7,6 +7,14 @@ import type {
 } from "@/types/proof";
 import type { CloseAssessment, CloseEvent } from "@/types/close";
 import type { MethodId, MethodStrategySnapshot } from "@/types/method";
+import type { ProofRunRuntimeState } from "@/types/proofRun";
+export type {
+  ProofRunRuntimeState,
+  ProofRunPhase,
+  ProofRunDispatchAction,
+  ProofRunBeatVisit,
+  ProofRunBeatId,
+} from "@/types/proofRun";
 
 // Pre-call types live in types/pre-call.ts.
 // Imported here for use in the Session aggregate; re-exported for backward compat.
@@ -23,6 +31,7 @@ import type {
 import type {
   GapDiagnosis,
   NeighborhoodComparison,
+  NeighborhoodComparisonState,
   PainBriefExtras,
 } from "@/types/scoutIntel";
 export type {
@@ -35,7 +44,12 @@ export type {
   PreCallResult,
   PreCallRequest,
 } from "@/types/pre-call";
-export type { GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
+export type {
+  GapDiagnosis,
+  NeighborhoodComparison,
+  NeighborhoodComparisonState,
+  PainBriefExtras,
+} from "@/types/scoutIntel";
 
 // Core phase flow
 export type SessionPhase =
@@ -243,6 +257,8 @@ export type Session = {
   score: PerformanceScore | null;
   /** Buyer presentation / proof / pricing milestones */
   presentation: SessionPresentationState;
+  /** Proof Run deck state machine (beats 1–6 + complete); syncs with `presentation.activeSlideIndex` when run is live. */
+  proofRun: ProofRunRuntimeState;
   /** Highest session-flow step (1–5) the rep has reached; drives loop-back nav. */
   flowMaxStep: number;
   signals: Signal[];
@@ -264,7 +280,8 @@ export type Session = {
 
   /** Places scout + rules — gap list and leakage estimate. */
   gapDiagnosis: GapDiagnosis | null;
-  neighborhoodComparison: NeighborhoodComparison | null;
+  /** Optional Maps nearby snapshot — never required for gaps or brief eligibility. */
+  neighborhoodContext: NeighborhoodComparisonState;
   scoutGeo: { lat: number; lng: number } | null;
   placesPrimaryType: string | null;
   /** Public buyer deck started (tab bar exit confirm). */

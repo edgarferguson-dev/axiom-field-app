@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { useSessionStore } from "@/store/session-store";
 import type { PresentationSlide, SlideType } from "@/lib/flows/presentationEngine";
@@ -58,6 +58,8 @@ type PresentationEngineProps = {
   variant?: "default" | "continuous";
   /** DaNI public deck: large type, almost no chrome. */
   daniSurface?: boolean;
+  /** When true, deck index is driven by session `proofRun` + `presentation.activeSlideIndex`. */
+  proofRunControlled?: boolean;
 };
 
 const EMPTY_SLIDES: PresentationSlide[] = [];
@@ -76,6 +78,7 @@ export function PresentationEngine({
   onReject,
   variant = "default",
   daniSurface = false,
+  proofRunControlled = false,
 }: PresentationEngineProps) {
   const business = useSessionStore((s) => s.session?.business);
   const presentation = useSessionStore((s) => s.session?.presentation);
@@ -99,11 +102,32 @@ export function PresentationEngine({
   );
   const setDemoSlideType = useSessionStore((s) => s.setDemoSlideType);
   const setPresentationActiveSlideIndex = useSessionStore((s) => s.setPresentationActiveSlideIndex);
+  const proofRunDispatch = useSessionStore((s) => s.proofRunDispatch);
 
   const generatedSlides = presentation?.generatedSlides;
   const slides = generatedSlides ?? EMPTY_SLIDES;
 
-  const [index, setIndex] = useState(0);
+  const [localIndex, setLocalIndex] = useState(0);
+  const storeSlideIndex = presentation?.activeSlideIndex ?? 0;
+
+  const clampDeckIndex = useCallback(
+    (i: number) => (slides.length === 0 ? 0 : Math.max(0, Math.min(i, slides.length - 1))),
+    [slides.length]
+  );
+
+  const index = proofRunControlled ? clampDeckIndex(storeSlideIndex) : clampDeckIndex(localIndex);
+
+  const commitDeckIndex = useCallback(
+    (next: number) => {
+      const c = clampDeckIndex(next);
+      if (proofRunControlled) {
+        proofRunDispatch({ type: "sync-index", index: c });
+      } else {
+        setLocalIndex(c);
+      }
+    },
+    [proofRunControlled, proofRunDispatch, clampDeckIndex]
+  );
 
   const proofStepRef = useRef(presentation?.interactiveProof?.step);
 
@@ -114,15 +138,20 @@ export function PresentationEngine({
 
   useEffect(() => {
     if (slides.length === 0) return;
-    setIndex((i) => Math.min(i, slides.length - 1));
-  }, [slides.length]);
+    if (proofRunControlled) return;
+    setLocalIndex((i) => Math.min(i, slides.length - 1));
+  }, [slides.length, proofRunControlled]);
 
   useEffect(() => {
     const list = generatedSlides;
     if (!list?.length) return;
     if (!proceedToPricingSignal) return;
-    setIndex(findSlideIndex(list, "pricing"));
-  }, [proceedToPricingSignal, generatedSlides]);
+    if (proofRunControlled) {
+      proofRunDispatch({ type: "skip-to-ask" });
+    } else {
+      setLocalIndex(findSlideIndex(list, "pricing"));
+    }
+  }, [proceedToPricingSignal, generatedSlides, proofRunControlled, proofRunDispatch]);
 
   const activeSlideType =
     business && slides.length > 0
@@ -236,7 +265,7 @@ export function PresentationEngine({
 
   const skipWalkthrough =
     slide.type === "interactive-proof"
-      ? () => setIndex((i) => Math.min(slides.length - 1, i + 1))
+      ? () => commitDeckIndex(index + 1)
       : undefined;
 
   return (
@@ -416,7 +445,7 @@ export function PresentationEngine({
                   : "One pilot on screen — nod means you’re aligned."}
               </p>
             </div>
-            {gapDiagnosis && activeOffer ? (
+            {gapDiagnosis ? (
               <div
                 className={cn(
                   "rounded-xl border px-4 py-3.5",
@@ -440,8 +469,15 @@ export function PresentationEngine({
                   )}
                 >
                   Directional leak is about ~${gapDiagnosis.estimatedMonthlyLeakage.toLocaleString()}/mo on the table.
-                  If this pilot recovers even a fraction, {activeOffer.label} at ${activeOffer.monthlyFee}/mo compares to
-                  that leak — not to a feature checklist.
+                  {activeOffer ? (
+                    <>
+                      {" "}
+                      If this pilot recovers even a fraction, {activeOffer.label} at ${activeOffer.monthlyFee}/mo compares to
+                      that leak — not to a feature checklist.
+                    </>
+                  ) : (
+                    <> Anchor the pilot to that leak — not to a feature checklist.</>
+                  )}
                 </p>
               </div>
             ) : null}
@@ -535,7 +571,7 @@ export function PresentationEngine({
                   disabled={!selectedTierId}
                   onClick={() => {
                     setPresentationPricingResponse("accept");
-                    if (postPricingIdx >= 0) setIndex(postPricingIdx);
+                    if (postPricingIdx >= 0) commitDeckIndex(postPricingIdx);
                     onPricingAccept?.();
                   }}
                 >
@@ -639,7 +675,7 @@ export function PresentationEngine({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
+              onClick={() => commitDeckIndex(index - 1)}
               disabled={atStart}
               className={cn(
                 "rounded-xl border px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-35",
@@ -652,7 +688,7 @@ export function PresentationEngine({
             </button>
             <button
               type="button"
-              onClick={() => setIndex((i) => Math.min(slides.length - 1, i + 1))}
+              onClick={() => commitDeckIndex(index + 1)}
               disabled={atEnd}
               className={cn(
                 "rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-35",
@@ -669,7 +705,11 @@ export function PresentationEngine({
             {variant === "continuous" && canSkipToOffer && (
               <button
                 type="button"
-                onClick={() => setIndex(pricingIdx)}
+                onClick={() =>
+                  proofRunControlled
+                    ? proofRunDispatch({ type: "skip-to-ask" })
+                    : setLocalIndex(pricingIdx)
+                }
                 className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted transition hover:border-accent/30 hover:text-foreground"
               >
                 Skip to ask

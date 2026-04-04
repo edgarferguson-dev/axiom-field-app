@@ -1,5 +1,5 @@
 import type { BusinessProfile, PreCallIntel, PreCallSource } from "@/types/session";
-import type { GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
+import type { GapDiagnosis, NeighborhoodComparisonState, PainBriefExtras } from "@/types/scoutIntel";
 import { PreCallBriefPanel } from "@/components/field-read/PreCallBriefPanel";
 
 type ScoutBriefSectionProps = {
@@ -7,7 +7,7 @@ type ScoutBriefSectionProps = {
   /** RFC 6A — AI vs rules-based brief (compact rep signal). */
   briefSource: PreCallSource | null;
   painExtras: PainBriefExtras | null;
-  neighborhood: NeighborhoodComparison | null;
+  neighborhoodContext: NeighborhoodComparisonState;
   gapDiagnosis: GapDiagnosis | null;
   businessProfile: BusinessProfile | null;
   onContinue: () => void;
@@ -18,7 +18,7 @@ export function ScoutBriefSection({
   intel,
   briefSource,
   painExtras,
-  neighborhood,
+  neighborhoodContext,
   gapDiagnosis,
   businessProfile,
   onContinue,
@@ -48,7 +48,8 @@ export function ScoutBriefSection({
             ) : null}
           </div>
           <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
-            Use the walk-in lines in order — then open Proof Run with the owner. Everything below matches your diagnosis.
+            Use the walk-in lines in order — then open Proof Run with the owner. Diagnosis and leakage come from scout
+            rules; nearby Maps context below is optional background when it&apos;s available.
           </p>
         </div>
         <button
@@ -62,7 +63,7 @@ export function ScoutBriefSection({
       <PreCallBriefPanel
         intel={intel}
         painExtras={painExtras}
-        neighborhood={neighborhood}
+        neighborhoodContext={neighborhoodContext}
         gapDiagnosis={gapDiagnosis}
         businessProfile={businessProfile}
         onContinue={onContinue}

@@ -55,7 +55,7 @@ export function NeighborhoodComparePoster({
       className={cn("rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-white", className)}
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">
-        Your block (about ½ mi)
+        Similar businesses nearby (~½ mi)
       </p>
       <ul className="mt-3 space-y-2.5">
         {rows.map((r) => {
@@ -74,7 +74,7 @@ export function NeighborhoodComparePoster({
         })}
       </ul>
       <p className="mt-2 text-[11px] text-white/45">
-        Avg {data.avgRating.toFixed(1)}★ · ~{Math.round(data.avgReviews)} reviews nearby
+        Local set averages about {data.avgRating.toFixed(1)}★ · ~{Math.round(data.avgReviews)} reviews
       </p>
     </div>
   );

@@ -174,8 +174,8 @@ export function generatePainDrivenPreCall(
 
   const competitiveLine =
     n != null
-      ? `${n.totalNearby} similar within ~½ mi · ${n.withBooking} list a website on Google · ${n.withHighRating} at 4.5+ stars (avg ${n.avgRating.toFixed(1)}★, ~${Math.round(n.avgReviews)} reviews).`
-      : "Run a Places scout with map pin — this block fills from real nearby results.";
+      ? `For context, similar businesses nearby (~½ mi): ${n.totalNearby} in this sample · ${n.withBooking} list a website on Google · ${n.withHighRating} at 4.5+ stars (avg ${n.avgRating.toFixed(1)}★, ~${Math.round(n.avgReviews)} reviews).`
+      : "Nearby Maps comparison wasn’t added — opening angles still follow their scout profile and diagnosis.";
 
   const openerSnippet = fullExtras.openingQuestion.length > 52 ? `${fullExtras.openingQuestion.slice(0, 52)}…` : fullExtras.openingQuestion;
 

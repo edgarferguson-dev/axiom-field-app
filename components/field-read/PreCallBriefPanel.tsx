@@ -2,12 +2,9 @@
 
 import type { ReactNode } from "react";
 import type { BusinessProfile, PreCallIntel, RiskBand, TabletGuidance, ChannelMode } from "@/types/session";
-import type { GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
-import {
-  LeakageBarPoster,
-  NeighborhoodComparePoster,
-  RatingGapStrip,
-} from "@/components/presentation/controlled/DiagnosisVisuals";
+import type { GapDiagnosis, NeighborhoodComparisonState, PainBriefExtras } from "@/types/scoutIntel";
+import { LeakageBarPoster, RatingGapStrip } from "@/components/presentation/controlled/DiagnosisVisuals";
+import { NeighborhoodContextSlot } from "@/components/field-read/NeighborhoodContextSlot";
 import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
 import { cn } from "@/lib/utils/cn";
 
@@ -123,7 +120,7 @@ function SecondaryCard({ title, children }: { title: string; children: ReactNode
 type PreCallBriefPanelProps = {
   intel: PreCallIntel;
   painExtras: PainBriefExtras | null;
-  neighborhood: NeighborhoodComparison | null;
+  neighborhoodContext: NeighborhoodComparisonState;
   gapDiagnosis: GapDiagnosis | null;
   businessProfile: BusinessProfile | null;
   onContinue: () => void;
@@ -132,7 +129,7 @@ type PreCallBriefPanelProps = {
 export function PreCallBriefPanel({
   intel,
   painExtras,
-  neighborhood,
+  neighborhoodContext,
   gapDiagnosis,
   businessProfile,
   onContinue,
@@ -144,6 +141,7 @@ export function PreCallBriefPanel({
 
   const anchorFirst = intel.keyOpportunities[0];
   const backupAngles = intel.keyOpportunities.slice(1);
+  const showNearbyColumn = neighborhoodContext.status !== "idle";
 
   return (
     <div className="mx-auto w-full max-w-xl animate-slide-up rounded-2xl ring-1 ring-foreground/[0.04]">
@@ -190,10 +188,15 @@ export function PreCallBriefPanel({
 
         {gapDiagnosis ? (
           <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div
+              className={cn(
+                "grid gap-3",
+                showNearbyColumn ? "sm:grid-cols-2" : "grid-cols-1"
+              )}
+            >
               <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} className="!border-white/15" />
-              {neighborhood ? (
-                <NeighborhoodComparePoster data={neighborhood} className="!border-white/15" />
+              {showNearbyColumn ? (
+                <NeighborhoodContextSlot context={neighborhoodContext} posterClassName="!border-white/15" />
               ) : null}
             </div>
             {businessProfile ? (
@@ -203,19 +206,6 @@ export function PreCallBriefPanel({
                 className="!border-white/15"
               />
             ) : null}
-          </div>
-        ) : null}
-
-        {neighborhood && !gapDiagnosis ? (
-          <div className="card-elevated border border-border/30 !bg-[#2d2d2d] !text-white">
-            <p className="text-caption !text-teal-400">Competitive landscape</p>
-            <p className="mt-2 text-sm font-medium text-white/90">
-              {neighborhood.totalNearby} similar within ~0.5 miles · {neighborhood.withBooking} with a website
-              link on Google · {neighborhood.withHighRating} at 4.5+ stars
-            </p>
-            <p className="mt-1 text-xs text-white/55">
-              Avg {neighborhood.avgRating.toFixed(1)}★ · ~{Math.round(neighborhood.avgReviews)} reviews
-            </p>
           </div>
         ) : null}
 
