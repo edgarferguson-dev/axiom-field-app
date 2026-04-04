@@ -6,15 +6,9 @@ import {
   type PresentationVisualPattern,
 } from "@/lib/presentation/assets";
 import { MerchantProofVisual } from "@/components/presentation/merchant/MerchantProofVisuals";
-import {
-  GapChipList,
-  LeakageBarPoster,
-  RatingGapStrip,
-} from "@/components/presentation/controlled/DiagnosisVisuals";
-import { NeighborhoodContextSlot } from "@/components/field-read/NeighborhoodContextSlot";
-import { NEIGHBORHOOD_CONTEXT_IDLE } from "@/types/scoutIntel";
-import { DaniPhoneSteps } from "@/components/presentation/proof-beats/DaniPhoneSteps";
-import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
+import { LeakageBarPoster } from "@/components/presentation/controlled/DiagnosisVisuals";
+import { PainMirrorBeat } from "@/components/presentation/proof-beats/PainMirrorBeat";
+import { ProofRunPhoneSequence } from "@/components/presentation/proof-beats/ProofRunPhoneSequence";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
 
@@ -135,13 +129,8 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
   const dani = tone === "dani";
   const businessName = useSessionStore((s) => s.session?.business?.name);
   const businessType = useSessionStore((s) => s.session?.business?.type?.trim() ?? "");
-  const businessRating = useSessionStore((s) => s.session?.business?.rating);
-  const businessReviewCount = useSessionStore((s) => s.session?.business?.reviewCount);
   const gapDiagnosis = useSessionStore((s) => s.session?.gapDiagnosis);
-  const neighborhoodContext = useSessionStore(
-    (s) => s.session?.neighborhoodContext ?? NEIGHBORHOOD_CONTEXT_IDLE
-  );
-  const showNearbyColumn = neighborhoodContext.status !== "idle";
+  const missedValueLine = useSessionStore((s) => s.session?.preCallIntel?.missedValueEstimate ?? null);
   const statContextLine = businessType ? `How ${businessType} owners usually describe the leak` : undefined;
 
   const mv = "merchantVisual" in slide ? slide.merchantVisual : undefined;
@@ -151,151 +140,104 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
   };
 
   if (slide.type === "proof-snapshot") {
-    if (mv) {
-      return (
-        <div className={cn("space-y-5", dani && "space-y-6")}>
-          {dani && gapDiagnosis?.gaps?.length ? (
-            <div className="space-y-3">
-              <div>
-                <p className="text-caption !text-teal-400">Diagnosed gaps</p>
-                {businessName ? <p className="text-title mt-1 !text-lg text-white">{businessName}</p> : null}
-              </div>
-              <GapChipList diagnosis={gapDiagnosis} />
-              <div
-                className={cn(
-                  "grid gap-3",
-                  showNearbyColumn ? "sm:grid-cols-2" : "grid-cols-1"
-                )}
-              >
-                <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} />
-                {showNearbyColumn ? <NeighborhoodContextSlot context={neighborhoodContext} /> : null}
-              </div>
-              <RatingGapStrip
-                rating={parseScoutRating(businessRating)}
-                reviewCount={parseScoutReviewCount(businessReviewCount)}
-              />
-            </div>
-          ) : null}
-          <MerchantProofVisual surface={mv} {...merchantProps} />
-          <div className="rounded-xl border border-accent/20 bg-accent/[0.05] px-4 py-3 sm:px-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Takeaway</p>
-            <p className={cn("mt-1.5 font-medium text-foreground", dani ? "text-lg sm:text-xl" : "text-sm sm:text-base")}>
-              {slide.takeaway}
-            </p>
-            <p className="mt-2 text-xs text-muted">{slide.proofLabel}</p>
-          </div>
-        </div>
-      );
-    }
     const pattern = resolvePresentationVisualPattern(slide.assetKey);
     return (
       <div className={cn("space-y-5", dani && "space-y-6")}>
-        <VisualFrame pattern={pattern} />
-        <div className="rounded-xl border border-accent/20 bg-accent/[0.05] px-4 py-3 sm:px-5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Takeaway</p>
-          <p className={cn("mt-1.5 font-medium text-foreground", dani ? "text-lg sm:text-xl" : "text-sm sm:text-base")}>
-            {slide.takeaway}
-          </p>
-          <p className="mt-2 text-xs text-muted">{slide.proofLabel}</p>
-        </div>
+        <PainMirrorBeat slide={slide} tone={dani ? "dani" : "default"} />
+        {mv ? (
+          <div className={cn("overflow-hidden rounded-2xl border border-ink-border bg-ink-900/40 p-2 sm:p-3")}>
+            <MerchantProofVisual surface={mv} {...merchantProps} />
+          </div>
+        ) : (
+          <VisualFrame pattern={pattern} className="opacity-90" />
+        )}
       </div>
     );
   }
 
   if (slide.type === "mock-flow") {
-    if (mv) {
-      return (
-        <div className={cn("space-y-5", dani && "space-y-6")}>
-          {dani ? (
-            <DaniPhoneSteps variant="fix" businessName={businessName ?? "us"} className="sm:max-w-[300px]" />
-          ) : null}
+    const pattern = slide.assetKey ? resolvePresentationVisualPattern(slide.assetKey) : "flow-three";
+    return (
+      <div className={cn("space-y-5", dani && "space-y-6")}>
+        <ProofRunPhoneSequence
+          key={slide.id}
+          variant="fix"
+          businessName={businessName}
+          gapDiagnosis={gapDiagnosis}
+          className="sm:max-w-[340px]"
+        />
+        {mv ? (
           <MerchantProofVisual surface={mv} {...merchantProps} />
-          <ol className="space-y-3">
-            {slide.steps.map((s) => (
-              <li key={s.id} className="flex gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">
+        ) : (
+          <VisualFrame pattern={pattern} />
+        )}
+        {!dani ? (
+          <ol className="space-y-2.5">
+            {slide.steps.slice(0, 4).map((s) => (
+              <li
+                key={s.id}
+                className="flex min-h-12 gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-3"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-sm font-bold text-teal-700 dark:text-teal-200">
                   {s.id}
                 </span>
-                <div>
+                <div className="min-w-0">
                   <p className="font-semibold text-foreground">{s.label}</p>
                   {s.hint ? <p className="text-xs text-muted">{s.hint}</p> : null}
                 </div>
               </li>
             ))}
           </ol>
-          <p className={cn("text-sm font-medium text-foreground/90", dani && "text-base")}>{slide.takeaway}</p>
-        </div>
-      );
-    }
-    const pattern = slide.assetKey ? resolvePresentationVisualPattern(slide.assetKey) : "flow-three";
-    return (
-      <div className={cn("space-y-5", dani && "space-y-6")}>
-        {dani ? (
-          <DaniPhoneSteps variant="fix" businessName={businessName ?? "us"} className="sm:max-w-[300px]" />
         ) : null}
-        <VisualFrame pattern={pattern} />
-        <ol className="space-y-3">
-          {slide.steps.map((s) => (
-            <li key={s.id} className="flex gap-3 rounded-xl border border-border/60 bg-card/40 px-4 py-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">
-                {s.id}
-              </span>
-              <div>
-                <p className="font-semibold text-foreground">{s.label}</p>
-                {s.hint ? <p className="text-xs text-muted">{s.hint}</p> : null}
-              </div>
-            </li>
-          ))}
-        </ol>
-        <p className={cn("text-sm font-medium text-foreground/90", dani && "text-base")}>{slide.takeaway}</p>
+        <p
+          className={cn(
+            "rounded-xl border border-teal-500/20 bg-teal-950/20 px-4 py-3 font-medium text-foreground",
+            dani ? "text-base sm:text-lg" : "text-sm"
+          )}
+        >
+          {slide.takeaway}
+        </p>
       </div>
     );
   }
 
   if (slide.type === "comparison-proof") {
-    if (mv) {
-      return (
-        <div className={cn("space-y-5", dani && "space-y-6")}>
-          {dani ? (
-            <DaniPhoneSteps variant="missed" businessName={businessName ?? ""} className="sm:max-w-[300px]" />
-          ) : null}
-          <MerchantProofVisual surface={mv} {...merchantProps} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-border/70 bg-background/50 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Before</p>
-              <p className="mt-1 font-semibold text-foreground">{slide.before.headline}</p>
-              <p className="mt-2 text-sm text-muted">{slide.before.detail}</p>
-            </div>
-            <div className="rounded-xl border border-accent/25 bg-accent/[0.06] p-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-accent">After</p>
-              <p className="mt-1 font-semibold text-foreground">{slide.after.headline}</p>
-              <p className="mt-2 text-sm text-muted">{slide.after.detail}</p>
-            </div>
-          </div>
-          <p className={cn("text-sm font-medium text-foreground/90", dani && "text-base")}>{slide.takeaway}</p>
-        </div>
-      );
-    }
     const pattern = slide.assetKey ? resolvePresentationVisualPattern(slide.assetKey) : "split-compare";
     return (
       <div className={cn("space-y-5", dani && "space-y-6")}>
-        {dani ? (
-          <DaniPhoneSteps variant="missed" businessName={businessName ?? ""} className="sm:max-w-[300px]" />
-        ) : null}
-        <VisualFrame pattern={pattern} />
+        <ProofRunPhoneSequence
+          key={slide.id}
+          variant="missed"
+          businessName={businessName}
+          gapDiagnosis={gapDiagnosis}
+          missedValueLine={missedValueLine}
+          className="sm:max-w-[340px]"
+        />
+        {mv ? (
+          <MerchantProofVisual surface={mv} {...merchantProps} />
+        ) : (
+          <VisualFrame pattern={pattern} />
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-border/70 bg-background/50 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Before</p>
+          <div className="rounded-xl border border-red-500/20 bg-red-950/20 p-4 dark:bg-red-950/30">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-red-200/90">Before</p>
             <p className="mt-1 font-semibold text-foreground">{slide.before.headline}</p>
-            <p className="mt-2 text-sm text-muted">{slide.before.detail}</p>
+            <p className="mt-2 text-sm leading-snug text-muted">{slide.before.detail}</p>
           </div>
-          <div className="rounded-xl border border-accent/25 bg-accent/[0.06] p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-accent">After</p>
+          <div className="rounded-xl border border-teal-500/25 bg-teal-950/15 p-4 dark:bg-teal-950/25">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-300">After</p>
             <p className="mt-1 font-semibold text-foreground">{slide.after.headline}</p>
-            <p className="mt-2 text-sm text-muted">{slide.after.detail}</p>
+            <p className="mt-2 text-sm leading-snug text-muted">{slide.after.detail}</p>
           </div>
         </div>
-        <p className={cn("text-sm font-medium text-foreground/90", dani && "text-base")}>{slide.takeaway}</p>
+        <p
+          className={cn(
+            "rounded-xl border border-border/50 bg-card/30 px-4 py-3 font-medium text-foreground/95",
+            dani ? "text-base sm:text-lg" : "text-sm"
+          )}
+        >
+          {slide.takeaway}
+        </p>
       </div>
     );
   }
