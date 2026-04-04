@@ -25,7 +25,9 @@ export function getSessionFlowStep(
   if (pathname.includes("/disposition") || phase === "disposition") return 5;
   if (pathname.includes("/close") || phase === "closing") return 4;
   if (pathname.includes("/offer-fit") || phase === "offer-fit") return 4;
+  if (pathname.includes("/health-report")) return 4;
   if (pathname.includes("/demo") || phase === "live-demo") return 3;
+  if (pathname.includes("/brief")) return preCallIntelReady ? 2 : 1;
   if (pathname.includes("/constraints") || phase === "constraints") return 2;
   if (pathname.includes("/field-read") || phase === "field-read") {
     return preCallIntelReady ? 2 : 1;

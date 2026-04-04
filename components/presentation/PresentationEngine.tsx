@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils/cn";
 import { useSessionStore } from "@/store/session-store";
 import type { PresentationSlide, SlideType } from "@/lib/flows/presentationEngine";
@@ -22,22 +22,25 @@ function stageGuidance(
       return "Confirm appetite before numbers — then advance to pricing.";
     case "interactive-proof":
       return interactiveProofComplete
-        ? "Proof is complete. Advance when the buyer is aligned."
-        : "Complete the proof walkthrough together — then pricing unlocks.";
+        ? "Walkthrough complete. Advance when the owner is with you."
+        : "Finish the walkthrough together — then the ask unlocks.";
     case "pricing":
-      return "One start option — let them nod, then continue.";
+      return "One pilot on screen — let them nod, then continue.";
     case "health-report-share":
-      return "Offer to text them the report — keep it lightweight.";
+      return "Offer to text the report link — light touch.";
     case "presentation-actions":
-      return "Pick the path that matches the room. Start setup is the forward motion when they are ready.";
+      return "Match the room. Start setup stays the forward path when they are ready.";
     default:
       return null;
   }
 }
 import { narrativeChapterIndexForSlideType, NARRATIVE_CHAPTERS } from "@/lib/presentation/narrativeChapter";
+import { resolveActiveOfferTemplate } from "@/lib/presentation/resolveActiveOfferTemplate";
 import { BeatOneLiners } from "@/components/presentation/BeatOneLiners";
-import { PricingCard } from "@/components/presentation/PricingCard";
+import { ProofRunAskPanel } from "@/components/presentation/proof-beats/ProofRunAskPanel";
+import { DEFAULT_OFFER_TEMPLATES } from "@/types/offerTemplate";
 import { SlideRenderer } from "@/components/presentation/SlideRenderer";
+import { slideIndexForAskBeat, slideIndexForHealthReportBeat } from "@/lib/proofRun/canonicalDeckMapping";
 
 /** End-of-deck actions from demo — wired in demo page only. */
 export type PresentationEndAction =
@@ -57,14 +60,11 @@ type PresentationEngineProps = {
   variant?: "default" | "continuous";
   /** DaNI public deck: large type, almost no chrome. */
   daniSurface?: boolean;
+  /** When true, deck index is driven by session `proofRun` + `presentation.activeSlideIndex`. */
+  proofRunControlled?: boolean;
 };
 
 const EMPTY_SLIDES: PresentationSlide[] = [];
-
-function findSlideIndex(slides: PresentationSlide[], type: SlideType): number {
-  const idx = slides.findIndex((s) => s.type === type);
-  return idx >= 0 ? idx : 0;
-}
 
 export function PresentationEngine({
   proceedToPricingSignal,
@@ -75,9 +75,19 @@ export function PresentationEngine({
   onReject,
   variant = "default",
   daniSurface = false,
+  proofRunControlled = false,
 }: PresentationEngineProps) {
   const business = useSessionStore((s) => s.session?.business);
   const presentation = useSessionStore((s) => s.session?.presentation);
+  const gapDiagnosis = useSessionStore((s) => s.session?.gapDiagnosis);
+  const sessionForOffer = useSessionStore((s) => s.session);
+  const offerTemplates = useSessionStore((s) => s.offerTemplates);
+  const defaultOfferTemplateId = useSessionStore((s) => s.defaultOfferTemplateId);
+  const activeOfferForAsk = resolveActiveOfferTemplate({
+    offerTemplates: offerTemplates.length > 0 ? offerTemplates : DEFAULT_OFFER_TEMPLATES,
+    defaultOfferTemplateId,
+    session: sessionForOffer ?? null,
+  });
   const ensurePresentationSlides = useSessionStore((s) => s.ensurePresentationSlides);
   const setPresentationPricingTierId = useSessionStore((s) => s.setPresentationPricingTierId);
   const setPresentationPricingResponse = useSessionStore((s) => s.setPresentationPricingResponse);
@@ -86,11 +96,32 @@ export function PresentationEngine({
   );
   const setDemoSlideType = useSessionStore((s) => s.setDemoSlideType);
   const setPresentationActiveSlideIndex = useSessionStore((s) => s.setPresentationActiveSlideIndex);
+  const proofRunDispatch = useSessionStore((s) => s.proofRunDispatch);
 
   const generatedSlides = presentation?.generatedSlides;
   const slides = generatedSlides ?? EMPTY_SLIDES;
 
-  const [index, setIndex] = useState(0);
+  const [localIndex, setLocalIndex] = useState(0);
+  const storeSlideIndex = presentation?.activeSlideIndex ?? 0;
+
+  const clampDeckIndex = useCallback(
+    (i: number) => (slides.length === 0 ? 0 : Math.max(0, Math.min(i, slides.length - 1))),
+    [slides.length]
+  );
+
+  const index = proofRunControlled ? clampDeckIndex(storeSlideIndex) : clampDeckIndex(localIndex);
+
+  const commitDeckIndex = useCallback(
+    (next: number) => {
+      const c = clampDeckIndex(next);
+      if (proofRunControlled) {
+        proofRunDispatch({ type: "sync-index", index: c });
+      } else {
+        setLocalIndex(c);
+      }
+    },
+    [proofRunControlled, proofRunDispatch, clampDeckIndex]
+  );
 
   const proofStepRef = useRef(presentation?.interactiveProof?.step);
 
@@ -101,15 +132,21 @@ export function PresentationEngine({
 
   useEffect(() => {
     if (slides.length === 0) return;
-    setIndex((i) => Math.min(i, slides.length - 1));
-  }, [slides.length]);
+    if (proofRunControlled) return;
+    setLocalIndex((i) => Math.min(i, slides.length - 1));
+  }, [slides.length, proofRunControlled]);
 
   useEffect(() => {
     const list = generatedSlides;
     if (!list?.length) return;
     if (!proceedToPricingSignal) return;
-    setIndex(findSlideIndex(list, "pricing"));
-  }, [proceedToPricingSignal, generatedSlides]);
+    if (proofRunControlled) {
+      proofRunDispatch({ type: "skip-to-ask" });
+    } else {
+      const askIdx = slideIndexForAskBeat(list);
+      setLocalIndex(askIdx >= 0 ? askIdx : 0);
+    }
+  }, [proceedToPricingSignal, generatedSlides, proofRunControlled, proofRunDispatch]);
 
   const activeSlideType =
     business && slides.length > 0
@@ -198,15 +235,16 @@ export function PresentationEngine({
     booking: null,
   };
 
-  const pricingIdx = findSlideIndex(slides, "pricing");
-  const actionsIdx = findSlideIndex(slides, "presentation-actions");
-  const healthIdx = findSlideIndex(slides, "health-report-share");
-  const postPricingIdx = healthIdx >= 0 ? healthIdx : actionsIdx;
+  const pricingIdx = slideIndexForAskBeat(slides);
+  const actionsIdx = slides.findIndex((s) => s.type === "presentation-actions");
+  const healthIdx = slideIndexForHealthReportBeat(slides);
+  const postPricingIdx =
+    healthIdx >= 0 ? healthIdx : actionsIdx >= 0 ? actionsIdx : Math.max(0, slides.length - 1);
   const canSkipToOffer = pricingIdx >= 0 && index < pricingIdx;
   const chapterIdx = narrativeChapterIndexForSlideType(slide.type);
 
   const shellClass = daniSurface
-    ? "relative w-full max-w-none overflow-hidden rounded-2xl bg-transparent px-3 py-5 sm:px-6 sm:py-8 md:px-10 md:py-10 lg:px-12"
+    ? "relative w-full max-w-none overflow-hidden rounded-2xl bg-transparent px-3 py-5 sm:px-6 sm:py-8 md:px-10 md:py-10 lg:px-12 ring-1 ring-transparent"
     : variant === "continuous"
       ? "relative overflow-hidden rounded-xl border border-border bg-surface p-4 shadow-soft sm:p-8"
       : "rounded-2xl border border-border bg-card p-4 shadow-soft sm:p-6";
@@ -223,15 +261,21 @@ export function PresentationEngine({
 
   const skipWalkthrough =
     slide.type === "interactive-proof"
-      ? () => setIndex((i) => Math.min(slides.length - 1, i + 1))
+      ? () => commitDeckIndex(index + 1)
       : undefined;
 
   return (
     <div className={variant === "continuous" ? "space-y-0" : "space-y-4"}>
       <div className={shellClass}>
         {daniSurface && (
-          <div className="mb-6 h-1 w-full overflow-hidden rounded-full bg-border sm:mb-8">
-            <div className="h-full rounded-full bg-accent-dark" style={{ width: `${progressPct}%` }} />
+          <div className="mb-5 sm:mb-7">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Proof run</p>
+              <span className="text-[10px] font-semibold tabular-nums text-muted">{progressPct}%</span>
+            </div>
+            <div className="h-1 w-full overflow-hidden rounded-full bg-border/90">
+              <div className="h-full rounded-full bg-accent-dark transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
+            </div>
           </div>
         )}
 
@@ -370,122 +414,36 @@ export function PresentationEngine({
         )}
 
         {slide.type === "pricing" && (
-          <div className={cn("mt-2 space-y-5", daniSurface && "mt-4 space-y-6")}>
-            {"merchantVisual" in slide && slide.merchantVisual ? (
-              <div className="mb-2">
-                <MerchantProofVisual
-                  surface={slide.merchantVisual}
-                  businessLabel={business?.name ?? undefined}
-                  contextLine={
-                    business?.type?.trim()
-                      ? `How ${business.type.trim()} owners usually describe the leak`
-                      : undefined
-                  }
-                />
-              </div>
-            ) : null}
-            <div
-              className={cn(
-                "rounded-xl border border-border/80 bg-background/40 px-3 py-2.5 sm:px-4 sm:py-3",
-                daniSurface && "border-border/60 bg-card/50 px-5 py-4"
-              )}
-            >
-              <p className="ax-label">Commitment path</p>
-              <p className={cn("mt-1 text-foreground", daniSurface ? "text-base font-medium sm:text-lg" : "text-sm")}>
-                {daniSurface
-                  ? "One lean start — next slide locks the move."
-                  : "One offer on screen — nod means you’re aligned."}
-              </p>
-            </div>
-            {slide.tiers.length === 1 ? (
-              <div className="mx-auto max-w-md rounded-xl border border-accent/25 bg-accent/[0.06] px-4 py-4 shadow-inner">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-foreground">{slide.tiers[0]!.name}</p>
-                    {slide.tiers[0]!.subtitle ? (
-                      <p className="mt-0.5 text-xs text-muted">{slide.tiers[0]!.subtitle}</p>
-                    ) : null}
-                  </div>
-                  <p className="text-right text-lg font-black tabular-nums text-accent">{slide.tiers[0]!.price}</p>
-                </div>
-                <ul className="mt-3 space-y-1.5 border-t border-border/40 pt-3">
-                  {slide.tiers[0]!.highlights.map((h) => (
-                    <li key={h} className="flex items-start gap-2 text-xs text-foreground/90">
-                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-accent" />
-                      {h}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div
-                className={cn(
-                  "grid gap-3",
-                  slide.tiers.length <= 1 ? "mx-auto max-w-md md:grid-cols-1" : "md:grid-cols-3",
-                  daniSurface && slide.tiers.length > 1 && "gap-4 md:gap-5"
-                )}
-              >
-                {slide.tiers.map((tier) => (
-                  <PricingCard
-                    key={tier.id}
-                    tier={tier}
-                    selected={selectedTierId === tier.id}
-                    onSelect={() => setPresentationPricingTierId(tier.id)}
+          <ProofRunAskPanel
+            slide={slide}
+            business={business}
+            gapDiagnosis={gapDiagnosis}
+            activeOffer={activeOfferForAsk}
+            daniSurface={daniSurface}
+            merchantVisualSlot={
+              "merchantVisual" in slide && slide.merchantVisual ? (
+                <div className="mb-1">
+                  <MerchantProofVisual
+                    surface={slide.merchantVisual}
+                    businessLabel={business?.name ?? undefined}
+                    contextLine={
+                      business?.type?.trim()
+                        ? `How ${business.type.trim()} owners usually describe the leak`
+                        : undefined
+                    }
                   />
-                ))}
-              </div>
-            )}
-
-            {slide.disclaimer && (
-              <div className="text-[11px] leading-relaxed text-muted sm:text-xs">{slide.disclaimer}</div>
-            )}
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-[11px] text-muted sm:text-xs">
-                {slide.tiers.length === 1 || selectedTierId
-                  ? "Ready when they are — one tap forward."
-                  : "Select a tier to unlock continue."}
-              </div>
-
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-                <button
-                  type="button"
-                  className={cn(
-                    "min-h-[48px] w-full rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-soft transition sm:w-auto sm:py-2.5",
-                    "hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                  )}
-                  disabled={!selectedTierId}
-                  onClick={() => {
-                    setPresentationPricingResponse("accept");
-                    if (postPricingIdx >= 0) setIndex(postPricingIdx);
-                    onPricingAccept?.();
-                  }}
-                >
-                  {postPricingIdx >= 0 ? "Continue" : "Continue"}
-                </button>
-                <button
-                  type="button"
-                  className="min-h-[48px] w-full rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-sm font-medium text-muted transition hover:border-accent/40 hover:text-foreground sm:w-auto sm:min-h-0 sm:py-2.5"
-                  onClick={() => {
-                    setPresentationPricingResponse("hesitate");
-                    onHesitate?.();
-                  }}
-                >
-                  Need a moment
-                </button>
-                <button
-                  type="button"
-                  className="min-h-[48px] w-full rounded-xl border border-border/80 bg-card/60 px-4 py-3 text-sm font-medium text-muted transition hover:border-signal-red/40 hover:text-signal-red sm:w-auto sm:min-h-0 sm:py-2.5"
-                  onClick={() => {
-                    setPresentationPricingResponse("reject");
-                    onReject?.();
-                  }}
-                >
-                  Not now
-                </button>
-              </div>
-            </div>
-          </div>
+                </div>
+              ) : undefined
+            }
+            selectedTierId={selectedTierId}
+            onSelectTier={(id) => setPresentationPricingTierId(id)}
+            postPricingIdx={postPricingIdx}
+            commitDeckIndex={commitDeckIndex}
+            setPresentationPricingResponse={setPresentationPricingResponse}
+            onPricingAccept={onPricingAccept}
+            onHesitate={onHesitate}
+            onReject={onReject}
+          />
         )}
 
         {slide.type === "presentation-actions" && onPresentationAction && (
@@ -508,7 +466,7 @@ export function PresentationEngine({
               <p className={cn("mt-1 text-muted", daniSurface ? "max-w-2xl text-base text-foreground/75" : "text-sm")}>
                 {daniSurface
                   ? "One clear motion — lead with setup when they are ready."
-                  : "The buyer should see one clear motion. Lead with setup when they&apos;re ready to move."}
+                  : "The buyer should see one clear motion. Lead with setup when they are ready to move."}
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -561,7 +519,7 @@ export function PresentationEngine({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
+              onClick={() => commitDeckIndex(index - 1)}
               disabled={atStart}
               className={cn(
                 "rounded-xl border px-4 py-2.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-35",
@@ -574,7 +532,7 @@ export function PresentationEngine({
             </button>
             <button
               type="button"
-              onClick={() => setIndex((i) => Math.min(slides.length - 1, i + 1))}
+              onClick={() => commitDeckIndex(index + 1)}
               disabled={atEnd}
               className={cn(
                 "rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-35",
@@ -591,10 +549,14 @@ export function PresentationEngine({
             {variant === "continuous" && canSkipToOffer && (
               <button
                 type="button"
-                onClick={() => setIndex(pricingIdx)}
+                onClick={() =>
+                  proofRunControlled
+                    ? proofRunDispatch({ type: "skip-to-ask" })
+                    : setLocalIndex(pricingIdx)
+                }
                 className="rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted transition hover:border-accent/30 hover:text-foreground"
               >
-                Skip to offer
+                Skip to ask
               </button>
             )}
           </div>

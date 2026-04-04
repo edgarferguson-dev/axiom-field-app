@@ -307,7 +307,7 @@ export function buildSharedPricing(ctx: MerchantBuildCtx, offer: OfferTemplate):
   const n = merchantShortName(ctx.business);
   return {
     type: "pricing",
-    kicker: "Offer",
+    kicker: "Ask",
     title: `One lean start for ${n}`,
     subtitle: offer.pilotSubtitle ?? "Prove it on your floor — pause or adjust after the window.",
     tiers: [offerToTier(offer)],
@@ -319,7 +319,8 @@ export function buildSharedPricing(ctx: MerchantBuildCtx, offer: OfferTemplate):
     conversation: cue({
       beatId: "shared-pricing",
       proofPurpose: "They choose try, not buy-the-stack.",
-      openingQuestion: "If we keep it light, are you open to a short pilot?",
+      openingQuestion:
+        "If we keep it to a short pilot aimed at the leak you just saw, is that fair to try?",
       reactionProbe: "What would make yes feel safe — terms, timing, or exit?",
       silenceCue: "After you state the number — mouth closed until they move.",
       privateCoachCue: "One card on screen — no tier tour.",

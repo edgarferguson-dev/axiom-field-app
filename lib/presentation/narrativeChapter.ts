@@ -7,7 +7,7 @@ import type { SlideType } from "@/lib/flows/presentationEngine";
 export const NARRATIVE_CHAPTERS: { id: string; label: string; match: (t: SlideType) => boolean }[] = [
   {
     id: "proof-arc",
-    label: "Proof",
+    label: "Evidence",
     match: (t) =>
       t === "proof-snapshot" ||
       t === "mock-flow" ||
@@ -21,10 +21,10 @@ export const NARRATIVE_CHAPTERS: { id: string; label: string; match: (t: SlideTy
       t === "interactive-proof" ||
       t === "business-snapshot",
   },
-  { id: "offer", label: "Offer", match: (t) => t === "pricing" },
+  { id: "offer", label: "Ask", match: (t) => t === "pricing" },
   {
     id: "commit",
-    label: "Next step",
+    label: "Wrap",
     match: (t) => t === "presentation-actions" || t === "health-report-share",
   },
 ];

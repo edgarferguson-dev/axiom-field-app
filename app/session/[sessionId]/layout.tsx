@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import type { ReactNode } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
@@ -99,7 +99,7 @@ export default function SessionLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell>
-      <div className="pb-[calc(80px+env(safe-area-inset-bottom,0px))]">
+      <div className="pb-[calc(64px+env(safe-area-inset-bottom,0px)+12px)]">
         <Topbar title="Axiom Field" subtitle={subtitle} />
         <SessionFlowProgress
           sessionId={sessionId}
@@ -110,7 +110,21 @@ export default function SessionLayout({ children }: { children: ReactNode }) {
         />
         {children}
       </div>
-      <SessionBottomNav />
+      <Suspense
+        fallback={
+          <div
+            className="pointer-events-none fixed bottom-0 left-0 right-0 border-t border-ink-border/80 bg-ink-950"
+            style={{
+              zIndex: 9999,
+              minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
+            aria-hidden
+          />
+        }
+      >
+        <SessionBottomNav />
+      </Suspense>
       <LiveCoachingOverlay />
     </AppShell>
   );

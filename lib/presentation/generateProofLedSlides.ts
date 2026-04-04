@@ -102,9 +102,9 @@ function buildHealthReportShare(ctx: BuildCtx): PresentationSlide {
   return {
     id: `${ctx.idPrefix}-health-share`,
     type: "health-report-share",
-    kicker: "Beat 6",
-    title: "Health report",
-    subtitle: `Preview and share a one-pager for ${n}.`,
+    kicker: "Report",
+    title: "Business health report",
+    subtitle: `Leave-behind summary for ${n} — same diagnosis as the run.`,
   };
 }
 

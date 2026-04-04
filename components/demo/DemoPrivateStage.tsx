@@ -65,6 +65,22 @@ export function DemoPrivateStage() {
   const activeSlideIndex = useSessionStore((s) => s.session?.presentation?.activeSlideIndex ?? 0);
   const businessProfile = useSessionStore((s) => s.session?.business ?? null);
   const businessName = businessProfile?.name ?? "";
+  const painBriefExtras = useSessionStore((s) => s.session?.painBriefExtras ?? null);
+  const gapDiagnosis = useSessionStore((s) => s.session?.gapDiagnosis ?? null);
+
+  const diagnosisHints = useMemo(() => {
+    const pe = painBriefExtras;
+    if (!pe?.openingQuestion?.trim()) return undefined;
+    const primaryGapLabel =
+      pe.primaryGapShortLabel?.trim() ||
+      gapDiagnosis?.gaps.find((g) => g.severity === "high")?.label ||
+      gapDiagnosis?.gaps[0]?.label;
+    return {
+      openingQuestion: pe.openingQuestion,
+      followUpProbe: pe.followUpProbe,
+      primaryGapLabel,
+    };
+  }, [painBriefExtras, gapDiagnosis]);
 
   const merchantProofBeat = useMemo(() => {
     if (!slides?.length) return null;
@@ -82,8 +98,9 @@ export function DemoPrivateStage() {
         phase,
         currentStep: demoSlideType,
         merchantProofBeat,
+        diagnosisHints,
       }),
-    [buyerState, liveSignal, coachingMomentum, phase, demoSlideType, merchantProofBeat]
+    [buyerState, liveSignal, coachingMomentum, phase, demoSlideType, merchantProofBeat, diagnosisHints]
   );
 
   const packs = useMemo(() => listPresentationPacks(), []);
@@ -108,9 +125,9 @@ export function DemoPrivateStage() {
         className="rounded-2xl border border-border bg-card px-3 py-3 shadow-soft ring-1 ring-foreground/[0.06]"
         aria-label="Presentation pack"
       >
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">Proof-led deck</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">Proof Run setup</p>
         <p className="mt-1 text-xs text-muted">
-          Pack + opening order. Offer below sets the single in-room ask — buyer never sees a tier matrix.
+          Pack + opening order. The offer below is the single in-room ask — owner never sees a tier matrix.
         </p>
         <div
           className={cn("mt-3 grid gap-2", showPackPicker ? "sm:grid-cols-2" : "sm:max-w-sm")}

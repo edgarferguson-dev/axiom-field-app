@@ -2,21 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
-/* DaNI Method — design tokens (mirror styles/tokens.ts + tailwind.config.ts) */
+/* =============================================================================
+   DaNI design foundation — CSS custom properties (source of truth for theme).
+   Tailwind semantic colors use rgb(var(--color-*) / <alpha-value>) pattern.
+   ============================================================================= */
+
 :root {
-  --background: #f3f3f1;
-  --surface: #ffffff;
-  --card: #ffffff;
-  --border: #dcdcdc;
-  --foreground: #111111;
-  --muted: #3a3a3a;
-  --accent: #00a8a8;
-  --accent-dim: #b8e8e8;
-  --accent-dark: #007b7b;
-  --highlight: #00cfcf;
-  --signal-green: #1f7a1f;
-  --signal-yellow: #8a7a38;
-  --signal-red: #a61e1e;
+  /* Canvas — textured silver-grey field (page chrome) */
+  --color-background: 196 194 192;
+  --texture-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.09'/%3E%3C/svg%3E");
+  --canvas-gradient: linear-gradient(
+    165deg,
+    rgb(212 210 208) 0%,
+    rgb(var(--color-background)) 42%,
+    rgb(184 182 180) 100%
+  );
+
+  /* Light surfaces on canvas (readable, phone-first) */
+  --color-surface: 250 249 248;
+  --color-card: 255 255 255;
+  --color-border: 218 216 213;
+  --color-foreground: 17 17 17;
+  --color-muted: 82 82 82;
+
+  /* Accent — teal system */
+  --color-accent: 0 168 168;
+  --color-accent-dim: 184 232 232;
+  --color-accent-soft: 230 250 250;
+  --color-accent-dark: 0 123 123;
+  --color-highlight: 0 207 207;
+
+  /* Signals */
+  --color-signal-green: 31 122 31;
+  --color-signal-yellow: 138 122 56;
+  --color-signal-red: 166 30 30;
+
+  /* Matte black / charcoal (dark cards, report, nav) */
+  --color-ink-950: 13 13 13;
+  --color-ink-900: 20 20 20;
+  --color-ink-800: 26 26 26;
+  --color-ink-700: 36 36 36;
+  --color-ink-600: 45 45 45;
+  --color-ink-500: 58 58 58;
+  --color-ink-border: 64 64 64;
+  --color-on-ink-muted: 163 163 163;
+  --color-on-ink-subtle: 115 115 115;
+
+  /* Accent fills (buttons) */
+  --color-accent-fill-from: 20 184 166;
+  --color-accent-fill-to: 34 211 238;
+
+  /* Radius scale */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+
+  /* Spacing scale (4px grid; use with calc or future Tailwind theme) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 2px 8px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.08);
+  --shadow-soft: 0 4px 20px rgb(0 0 0 / 0.06);
+  --shadow-elevated: 0 12px 40px rgb(0 0 0 / 0.12);
+  --shadow-inset-light: inset 0 1px 0 rgb(255 255 255 / 0.65);
+  --shadow-glow-accent: 0 4px 24px rgb(0 168 168 / 0.18);
+  --shadow-ink: 0 8px 28px rgb(0 0 0 / 0.45);
+
+  /* Typography scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --tracking-tight: -0.025em;
+  --tracking-label: 0.05em;
+  --tracking-caps: 0.18em;
+
+  /* Legacy flat aliases (components using var(--background) hex) */
+  --background: rgb(var(--color-background));
+  --surface: rgb(var(--color-surface));
+  --card: rgb(var(--color-card));
+  --border: rgb(var(--color-border));
+  --foreground: rgb(var(--color-foreground));
+  --muted: rgb(var(--color-muted));
+  --accent: rgb(var(--color-accent));
+  --accent-dim: rgb(var(--color-accent-dim));
+  --accent-dark: rgb(var(--color-accent-dark));
+  --highlight: rgb(var(--color-highlight));
+  --signal-green: rgb(var(--color-signal-green));
+  --signal-yellow: rgb(var(--color-signal-yellow));
+  --signal-red: rgb(var(--color-signal-red));
 }
 
 * {
@@ -30,148 +124,243 @@ html {
 
 body {
   display: block;
-  color: var(--foreground);
-  background: var(--background);
+  color: rgb(var(--color-foreground));
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   min-height: 100vh;
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-::selection {
-  background: rgba(0, 168, 168, 0.22);
-  color: var(--foreground);
-}
-
-.ax-h1 {
-  font-size: 1.875rem;
-  line-height: 2.25rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  color: var(--foreground);
-}
-
-.ax-h2 {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
   font-weight: 500;
-  color: var(--foreground);
 }
 
-.ax-body {
-  font-size: 1rem;
-  line-height: 1.5;
-  color: var(--foreground);
-}
-
-.ax-label {
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-
-/* DaNI field — textured canvas + matte surfaces (utility classes) */
+/* Textured silver-grey canvas — global app shell */
 body.app-root {
-  background-color: #c8c8c8;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
-  font-weight: 500;
+  background-color: rgb(var(--color-background));
+  background-image: var(--texture-noise), var(--canvas-gradient);
+  background-blend-mode: normal, normal;
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: rgb(var(--color-accent) / 0.22);
+  color: rgb(var(--color-foreground));
+}
+
+/* ---------------------------------------------------------------------------
+   Typography primitives (light surfaces / default chrome)
+   --------------------------------------------------------------------------- */
+.ax-h1 {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+  color: rgb(var(--color-foreground));
+}
+
+.ax-h2 {
+  font-size: var(--text-xl);
+  line-height: var(--leading-snug);
+  font-weight: 500;
+  color: rgb(var(--color-foreground));
+}
+
+.ax-body {
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: rgb(var(--color-foreground));
+}
+
+.ax-label {
+  font-size: var(--text-xs);
+  line-height: 1rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: rgb(var(--color-muted));
+}
+
+/* ---------------------------------------------------------------------------
+   Card primitives — matte / charcoal (DaNI dark surfaces)
+   --------------------------------------------------------------------------- */
 .card-primary {
-  background-color: #1a1a1a;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  color: #ffffff;
+  background-color: rgb(var(--color-ink-800));
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-ink);
+  color: #fff;
+  border: 1px solid rgb(var(--color-ink-border) / 0.35);
 }
 
 .card-secondary {
-  background-color: #2d2d2d;
-  border-radius: 10px;
-  padding: 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-  color: #ffffff;
+  background-color: rgb(var(--color-ink-600));
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  color: #fff;
+  border: 1px solid rgb(var(--color-ink-border) / 0.25);
 }
 
 .card-elevated {
-  background-color: #363636;
-  border-radius: 8px;
-  padding: 12px;
-  color: #ffffff;
+  background-color: rgb(var(--color-ink-700));
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  color: #fff;
+  border: 1px solid rgb(var(--color-ink-border) / 0.2);
 }
 
+/* Light cards on canvas (default product chrome) */
+@layer components {
+  .dani-card {
+    border-radius: var(--radius-xl);
+    border: 1px solid rgb(var(--color-border) / 0.85);
+    background-color: rgb(var(--color-card));
+    box-shadow: var(--shadow-inset-light), var(--shadow-soft);
+  }
+
+  .dani-card--muted {
+    border-radius: var(--radius-xl);
+    border: 1px solid rgb(var(--color-border) / 0.7);
+    background-color: rgb(var(--color-surface));
+    box-shadow: var(--shadow-xs);
+  }
+
+  .dani-card--ink {
+    border-radius: var(--radius-xl);
+    border: 1px solid rgb(var(--color-ink-border) / 0.4);
+    background-color: rgb(var(--color-ink-900));
+    color: #fff;
+    box-shadow: var(--shadow-ink);
+  }
+
+  .dani-card--ink-soft {
+    border-radius: var(--radius-lg);
+    border: 1px solid rgb(var(--color-ink-border) / 0.3);
+    background-color: rgb(var(--color-ink-800));
+    color: #fff;
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Button primitives
+   --------------------------------------------------------------------------- */
 .btn-primary {
-  background: linear-gradient(135deg, #14b8a6, #22d3ee);
-  color: #ffffff;
-  border: none;
-  border-radius: 10px;
-  padding: 16px 24px;
-  font-size: 16px;
-  font-weight: 700;
-  min-height: 52px;
   width: 100%;
-  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+  min-height: 52px;
+  padding: var(--space-4) var(--space-6);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: #fff;
   cursor: pointer;
-  transition: transform 0.1s ease;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--color-accent-fill-from)),
+    rgb(var(--color-accent-fill-to))
+  );
+  box-shadow: var(--shadow-glow-accent);
+  transition: transform 0.1s ease, opacity 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary:hover {
+  opacity: 0.95;
 }
 
 .btn-primary:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .btn-secondary {
-  background: #2d2d2d;
-  color: #ffffff;
-  border: 1px solid #4a4a4a;
-  border-radius: 10px;
-  padding: 14px 20px;
-  font-size: 15px;
-  font-weight: 600;
-  min-height: 48px;
   width: 100%;
+  min-height: 48px;
+  padding: 14px var(--space-5);
+  border: 1px solid rgb(var(--color-ink-border) / 0.55);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: #fff;
+  background-color: rgb(var(--color-ink-600));
   cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
+.btn-secondary:hover {
+  border-color: rgb(var(--color-accent) / 0.45);
+  background-color: rgb(var(--color-ink-700));
+}
+
+.btn-secondary:active {
+  transform: scale(0.99);
+}
+
+@layer components {
+  /* Outline / ghost — light surface */
+  .btn-dani-outline {
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgb(var(--color-border));
+    background-color: rgb(var(--color-card) / 0.6);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: rgb(var(--color-muted));
+    transition: border-color 0.15s ease, color 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-dani-outline:hover {
+    border-color: rgb(var(--color-accent) / 0.45);
+    color: rgb(var(--color-foreground));
+  }
+}
+
+/* Dark-surface typography helpers (reports, DaNI buyer) */
 .text-headline {
-  font-size: 28px;
+  font-size: var(--text-2xl);
   font-weight: 800;
-  color: #ffffff;
+  color: #fff;
+  letter-spacing: var(--tracking-tight);
 }
 
 .text-title {
-  font-size: 22px;
+  font-size: var(--text-xl);
   font-weight: 700;
-  color: #ffffff;
+  color: #fff;
 }
 
 .text-body {
-  font-size: 16px;
+  font-size: var(--text-base);
   font-weight: 500;
-  color: #ffffff;
+  color: #fff;
 }
 
 .text-secondary {
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: #a0a0a0;
+  color: rgb(var(--color-on-ink-muted));
 }
 
 .text-caption {
-  font-size: 12px;
-  font-weight: 500;
-  color: #a0a0a0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: rgb(var(--color-on-ink-subtle));
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--tracking-caps);
 }
 
 .text-accent {
-  color: #14b8a6;
+  color: rgb(var(--color-accent-fill-from));
 }
 
 .text-negative {
@@ -179,10 +368,36 @@ body.app-root {
 }
 
 .text-price {
-  font-size: 34px;
+  font-size: 2.125rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #14b8a6, #22d3ee);
+  letter-spacing: var(--tracking-tight);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--color-accent-fill-from)),
+    rgb(var(--color-accent-fill-to))
+  );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Proof Run — eyebrow (uses theme muted on light) */
+.proof-phase-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: rgb(var(--color-muted));
+}
+
+.scout-intake-surface {
+  border-radius: var(--radius-3xl);
+  border: 1px solid rgb(var(--color-border) / 0.9);
+  background: linear-gradient(
+    165deg,
+    rgb(255 255 255 / 0.94) 0%,
+    rgb(var(--color-card)) 42%,
+    rgb(var(--color-surface)) 100%
+  );
+  box-shadow: var(--shadow-inset-light), var(--shadow-elevated);
 }

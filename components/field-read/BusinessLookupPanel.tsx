@@ -35,49 +35,80 @@ type BusinessLookupPanelProps = {
    */
   onDirectoryApply?: (merged: BusinessProfile, meta?: PlacesApplyMeta) => void;
   businessTypes: string[];
+  /** Bias text search toward last pinned scout location (from a prior Places selection). */
+  searchLocationBias?: { lat: number; lng: number } | null;
 };
 
-export function BusinessLookupPanel({ form, onChange, onDirectoryApply, businessTypes }: BusinessLookupPanelProps) {
+export function BusinessLookupPanel({
+  form,
+  onChange,
+  onDirectoryApply,
+  businessTypes,
+  searchLocationBias,
+}: BusinessLookupPanelProps) {
   const [placesSearchQuery, setPlacesSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<BusinessLookupMatch[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
+
+  const searchOpts = useCallback(() => {
+    if (
+      searchLocationBias &&
+      Number.isFinite(searchLocationBias.lat) &&
+      Number.isFinite(searchLocationBias.lng)
+    ) {
+      return {
+        latitude: searchLocationBias.lat,
+        longitude: searchLocationBias.lng,
+        radiusMeters: 15_000,
+      };
+    }
+    return undefined;
+  }, [searchLocationBias]);
 
   const runSearch = useCallback(async () => {
     const q = form.name.trim();
     if (!q) return;
     setSearching(true);
+    setSearchError(null);
     setResults([]);
     try {
-      const r = await searchBusinesses(q);
-      setResults(r);
+      const r = await searchBusinesses(q, searchOpts());
+      setResults(r.matches);
+      if (r.error) setSearchError("Search unavailable — enter details manually or try again.");
     } finally {
       setSearching(false);
     }
-  }, [form.name]);
+  }, [form.name, searchOpts]);
 
   const handleGoogleSearch = useCallback(async () => {
     const q = placesSearchQuery.trim();
     if (!q) return;
     setSearching(true);
+    setSearchError(null);
     setResults([]);
     try {
-      const r = await searchBusinesses(q);
-      setResults(r);
+      const r = await searchBusinesses(q, searchOpts());
+      setResults(r.matches);
+      if (r.error) setSearchError("Search unavailable — enter details manually or try again.");
     } finally {
       setSearching(false);
     }
-  }, [placesSearchQuery]);
+  }, [placesSearchQuery, searchOpts]);
 
   const applyMatch = useCallback(
     async (m: BusinessLookupMatch) => {
       setEnriching(true);
+      setDetailsError(null);
       try {
         let enriched: BusinessLookupMatch = m;
         if (m.placeId) {
           const details = await fetchPlaceDetails(m.placeId);
           if (details) enriched = { ...m, ...details, name: details.name || m.name };
+          else setDetailsError("Could not load full place details — profile may be incomplete. Edit fields as needed.");
         }
         const merged = mergeFormWithDirectoryMatch(form, enriched, businessTypes);
         const meta: PlacesApplyMeta = {
@@ -109,16 +140,18 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
   );
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5 shadow-soft sm:p-6">
-      <div className="mb-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Account</p>
-        <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Who you&apos;re visiting</h3>
-        <p className="mt-1 text-sm text-muted">Search Google (Brooklyn-biased), pick a row — form fills + gap scan runs.</p>
+    <section className="space-y-4 border-b border-border/55 pb-6">
+      <div className="mb-1">
+        <p className="proof-phase-eyebrow text-accent">Scout</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-tight text-foreground">Merchant snapshot</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted">
+          Search, tap a match — profile and gap scan populate. Edit anything before you lock the brief.
+        </p>
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-xl border border-border/80 bg-card/40 p-3">
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+        <div className="rounded-xl border border-border/80 bg-card/50 p-4 ring-1 ring-foreground/[0.03]">
+          <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
             Google Places
           </label>
           <input
@@ -162,6 +195,12 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
           </div>
         </div>
 
+        {searchError ? (
+          <p className="rounded-lg border border-signal-yellow/30 bg-signal-yellow/5 px-3 py-2 text-xs font-medium text-foreground">
+            {searchError}
+          </p>
+        ) : null}
+
         {results.length > 0 && (
           <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-border bg-card p-2">
             {results.map((r, i) => (
@@ -185,6 +224,10 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
 
         {enriching ? (
           <p className="text-xs font-medium text-accent">Loading place details…</p>
+        ) : null}
+
+        {detailsError ? (
+          <p className="text-xs font-medium text-signal-yellow">{detailsError}</p>
         ) : null}
 
         <FormSelect

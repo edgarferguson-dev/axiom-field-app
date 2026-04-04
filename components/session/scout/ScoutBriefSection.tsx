@@ -1,5 +1,5 @@
-import type { PreCallIntel, PreCallSource } from "@/types/session";
-import type { NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
+import type { BusinessProfile, PreCallIntel, PreCallSource } from "@/types/session";
+import type { GapDiagnosis, NeighborhoodComparisonState, PainBriefExtras } from "@/types/scoutIntel";
 import { PreCallBriefPanel } from "@/components/field-read/PreCallBriefPanel";
 
 type ScoutBriefSectionProps = {
@@ -7,7 +7,9 @@ type ScoutBriefSectionProps = {
   /** RFC 6A — AI vs rules-based brief (compact rep signal). */
   briefSource: PreCallSource | null;
   painExtras: PainBriefExtras | null;
-  neighborhood: NeighborhoodComparison | null;
+  neighborhoodContext: NeighborhoodComparisonState;
+  gapDiagnosis: GapDiagnosis | null;
+  businessProfile: BusinessProfile | null;
   onContinue: () => void;
   onNewScout: () => void;
 };
@@ -16,18 +18,19 @@ export function ScoutBriefSection({
   intel,
   briefSource,
   painExtras,
-  neighborhood,
+  neighborhoodContext,
+  gapDiagnosis,
+  businessProfile,
   onContinue,
   onNewScout,
 }: ScoutBriefSectionProps) {
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-              Brief locked in
-            </h2>
+          <p className="proof-phase-eyebrow text-accent">2 · Brief</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Brief ready</h2>
             {briefSource === "ai" ? (
               <span
                 className="rounded-full border border-signal-green/35 bg-signal-green/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-signal-green"
@@ -44,22 +47,25 @@ export function ScoutBriefSection({
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-xs text-muted sm:text-sm">
-            Walk-in lines below — then open live demo for proof.
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+            Use the walk-in lines in order — then open Proof Run with the owner. Diagnosis and leakage come from scout
+            rules; nearby Maps context below is optional background when it&apos;s available.
           </p>
         </div>
         <button
           type="button"
           onClick={onNewScout}
-          className="shrink-0 self-start rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-muted transition hover:border-accent/40 hover:text-foreground sm:self-center sm:px-4 sm:text-sm"
+          className="shrink-0 self-start rounded-xl border border-border/90 bg-card/80 px-4 py-2.5 text-xs font-semibold text-muted shadow-sm transition hover:border-accent/35 hover:text-foreground sm:self-center sm:text-sm"
         >
-          New scout
+          Rescan
         </button>
       </div>
       <PreCallBriefPanel
         intel={intel}
         painExtras={painExtras}
-        neighborhood={neighborhood}
+        neighborhoodContext={neighborhoodContext}
+        gapDiagnosis={gapDiagnosis}
+        businessProfile={businessProfile}
         onContinue={onContinue}
       />
     </div>

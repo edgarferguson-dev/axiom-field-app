@@ -15,13 +15,19 @@ export type SearchBusinessesOptions = {
   radiusMeters?: number;
 };
 
+export type SearchBusinessesResult = {
+  matches: BusinessLookupMatch[];
+  /** Request failed or Places returned an error — distinct from zero results. */
+  error?: "unavailable";
+};
+
 /** Search businesses — uses active provider (Google when configured). */
 export async function searchBusinesses(
   query: string,
   opts?: SearchBusinessesOptions
-): Promise<BusinessLookupMatch[]> {
+): Promise<SearchBusinessesResult> {
   const q = query.trim();
-  if (!q) return [];
+  if (!q) return { matches: [] };
 
   try {
     const locationBias =
@@ -39,11 +45,13 @@ export async function searchBusinesses(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query: q, locationBias }),
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      return { matches: [], error: "unavailable" };
+    }
     const data = await res.json();
-    return mapSearchResults(data);
+    return { matches: mapSearchResults(data) };
   } catch {
-    return [];
+    return { matches: [], error: "unavailable" };
   }
 }
 
@@ -68,5 +76,6 @@ export async function fetchPlaceDetails(placeId: string): Promise<BusinessLookup
 
 /** @deprecated Use `searchBusinesses` */
 export async function searchBusiness(query: string) {
-  return searchBusinesses(query);
+  const r = await searchBusinesses(query);
+  return r.matches;
 }

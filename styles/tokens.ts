@@ -1,9 +1,11 @@
 /**
- * DaNI Method — Deal Activation & New Income. Mirror `tailwind.config.ts` + `app/globals.css`.
+ * Legacy TS mirror — **theme source of truth is `app/globals.css` `:root` tokens**
+ * and `tailwind.config.ts` semantic colors. Update those first; sync here only if TS consumers need literals.
  */
 export const tokens = {
   colors: {
-    bg: "#F3F3F1",
+    /** Canvas (approximate; use CSS vars in new UI) */
+    bg: "#C4C2C0",
     surface: "#FFFFFF",
     border: "#DCDCDC",
     text: "#111111",

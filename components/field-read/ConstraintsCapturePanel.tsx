@@ -37,17 +37,14 @@ export function ConstraintsCapturePanel({
   onCycleConstraintSeverity,
 }: ConstraintsCapturePanelProps) {
   return (
-    <div className="space-y-8 rounded-2xl border border-accent/20 bg-gradient-to-b from-sky-50/90 to-surface p-5 shadow-sm ring-1 ring-slate-900/[0.03] sm:p-6">
+    <div className="space-y-8 rounded-2xl border border-border/80 bg-card/70 p-5 shadow-sm ring-1 ring-foreground/[0.04] sm:p-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          Constraints
-        </p>
-        <h3 className="mt-1 text-base font-semibold text-foreground sm:text-lg">
-          What pressure is visible? What&apos;s likely being missed?
+        <p className="proof-phase-eyebrow text-accent">Visit context</p>
+        <h3 className="mt-2 text-base font-semibold tracking-tight text-foreground sm:text-lg">
+          What pressure is visible on the floor?
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          Diagnose on-site context and operational leaks — not observations for a log. Tap chips;
-          use severity on business constraints when it matters for the close.
+          Quick taps — not a survey. Severity on constraints only when it changes how you&apos;ll run the Proof Run.
         </p>
       </div>
 

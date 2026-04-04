@@ -19,8 +19,18 @@ import type {
   CloseOutcome,
   FieldSnapshotKey,
 } from "@/types/session";
-import type { FieldRepCard, GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
-import { DEFAULT_FIELD_REP_CARD } from "@/types/scoutIntel";
+import type {
+  FieldRepCard,
+  GapDiagnosis,
+  NeighborhoodComparison,
+  NeighborhoodComparisonState,
+  PainBriefExtras,
+} from "@/types/scoutIntel";
+import {
+  DEFAULT_FIELD_REP_CARD,
+  NEIGHBORHOOD_CONTEXT_IDLE,
+  neighborhoodDataIsUseful,
+} from "@/types/scoutIntel";
 import { createEmptyPresentation } from "@/types/presentation";
 import type { MaterialSummary } from "@/lib/flows/materialEngine";
 import { buildStrategyPackage } from "@/lib/flows/presentationEngine";
@@ -79,6 +89,9 @@ import { computeLocalBusinessIdentityKey } from "@/lib/field/businessIdentity";
 import { getPresentationPackDefinition } from "@/lib/presentation/packs/registry";
 import type { SessionPresentationState } from "@/types/presentation";
 import type { PresentationSlide } from "@/lib/flows/presentationEngine";
+import type { ProofRunDispatchAction } from "@/types/proofRun";
+import { createIdleProofRun } from "@/types/proofRun";
+import { applyProofRunDispatch } from "@/lib/proofRun/applyProofRunDispatch";
 
 function regenerateProofSlides(args: {
   session: Session;
@@ -222,12 +235,13 @@ type SessionStore = {
   fieldRepCard: FieldRepCard;
   setFieldRepCard: (card: FieldRepCard) => void;
   setGapDiagnosis: (v: GapDiagnosis | null) => void;
-  setNeighborhoodComparison: (v: NeighborhoodComparison | null) => void;
+  setNeighborhoodContext: (v: NeighborhoodComparisonState) => void;
   setScoutGeo: (v: { lat: number; lng: number } | null) => void;
   setPlacesPrimaryType: (v: string | null) => void;
   setLiveDemoBuyerStarted: (v: boolean) => void;
   setPainBriefExtras: (v: PainBriefExtras | null) => void;
   clearScoutDerivedFields: () => void;
+  proofRunDispatch: (action: ProofRunDispatchAction) => void;
 };
 
 function makeEmptySession(
@@ -272,11 +286,12 @@ function makeEmptySession(
     activeMethodId: DEFAULT_METHOD_ID,
     methodStrategy: createInitialMethodStrategySnapshot(),
     gapDiagnosis: null,
-    neighborhoodComparison: null,
+    neighborhoodContext: NEIGHBORHOOD_CONTEXT_IDLE,
     scoutGeo: null,
     placesPrimaryType: null,
     liveDemoBuyerStarted: false,
     painBriefExtras: null,
+    proofRun: createIdleProofRun(),
   };
 }
 
@@ -437,8 +452,8 @@ export const useSessionStore = create<SessionStore>()(
       setGapDiagnosis: (gapDiagnosis) =>
         set((s) => (s.session ? { session: { ...s.session, gapDiagnosis } } : s)),
 
-      setNeighborhoodComparison: (neighborhoodComparison) =>
-        set((s) => (s.session ? { session: { ...s.session, neighborhoodComparison } } : s)),
+      setNeighborhoodContext: (neighborhoodContext) =>
+        set((s) => (s.session ? { session: { ...s.session, neighborhoodContext } } : s)),
 
       setScoutGeo: (scoutGeo) =>
         set((s) => (s.session ? { session: { ...s.session, scoutGeo } } : s)),
@@ -459,7 +474,7 @@ export const useSessionStore = create<SessionStore>()(
                 session: {
                   ...s.session,
                   gapDiagnosis: null,
-                  neighborhoodComparison: null,
+                  neighborhoodContext: NEIGHBORHOOD_CONTEXT_IDLE,
                   scoutGeo: null,
                   placesPrimaryType: null,
                   painBriefExtras: null,
@@ -467,6 +482,27 @@ export const useSessionStore = create<SessionStore>()(
               }
             : s
         ),
+
+      proofRunDispatch: (action) =>
+        set((s) => {
+          if (!s.session) return s;
+          const slides = s.session.presentation?.generatedSlides ?? [];
+          const pr = s.session.proofRun ?? createIdleProofRun();
+          const { proofRun, activeSlideIndex } = applyProofRunDispatch({
+            proofRun: pr,
+            action,
+            slides,
+            now: Date.now(),
+          });
+          const pres = s.session.presentation ?? createEmptyPresentation();
+          return {
+            session: {
+              ...s.session,
+              proofRun,
+              presentation: { ...pres, activeSlideIndex },
+            },
+          };
+        }),
 
       setFieldEngagementDecision: (fieldEngagementDecision) =>
         set((s) =>
@@ -1049,6 +1085,11 @@ export const useSessionStore = create<SessionStore>()(
                   proofAssessment: null,
                   closeEvents: [],
                   closeAssessment: null,
+                  proofRun: createIdleProofRun(),
+                  presentation: {
+                    ...(s.session.presentation ?? createEmptyPresentation()),
+                    activeSlideIndex: 0,
+                  },
                 },
               }
             : s
@@ -1269,11 +1310,37 @@ export const useSessionStore = create<SessionStore>()(
               s.directoryAutofillAt = null;
             }
             if (s.gapDiagnosis === undefined) s.gapDiagnosis = null;
-            if (s.neighborhoodComparison === undefined) s.neighborhoodComparison = null;
+            // V18: `neighborhoodContext` replaces legacy `neighborhoodComparison` blob
+            if (s.neighborhoodContext === undefined || s.neighborhoodContext === null) {
+              const raw = s.neighborhoodComparison as unknown;
+              if (
+                raw &&
+                typeof raw === "object" &&
+                raw !== null &&
+                typeof (raw as NeighborhoodComparison).totalNearby === "number"
+              ) {
+                const d = raw as NeighborhoodComparison;
+                s.neighborhoodContext = neighborhoodDataIsUseful(d)
+                  ? { status: "success", data: d }
+                  : { status: "empty", detail: "No similar listings in this search radius — optional snapshot." };
+              } else {
+                s.neighborhoodContext = NEIGHBORHOOD_CONTEXT_IDLE;
+              }
+            }
+            if ("neighborhoodComparison" in s) {
+              delete s.neighborhoodComparison;
+            }
             if (s.scoutGeo === undefined) s.scoutGeo = null;
             if (s.placesPrimaryType === undefined) s.placesPrimaryType = null;
             if (s.liveDemoBuyerStarted === undefined) s.liveDemoBuyerStarted = false;
             if (s.painBriefExtras === undefined) s.painBriefExtras = null;
+            // V19: Proof Run deck state machine
+            if (s.proofRun === undefined || s.proofRun === null) {
+              s.proofRun = createIdleProofRun();
+            } else {
+              const pr = s.proofRun as { lastSlideIndex?: number };
+              if (typeof pr.lastSlideIndex !== "number") pr.lastSlideIndex = 0;
+            }
             // V13: `closeRecommendation` removed — embed into `closeAssessment.recommendation`
             if ("closeRecommendation" in s) {
               const cr = s.closeRecommendation as CloseRecommendation | null | undefined;
