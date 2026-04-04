@@ -72,3 +72,117 @@ body {
   letter-spacing: 0.05em;
   color: var(--muted);
 }
+
+/* DaNI field — textured canvas + matte surfaces (utility classes) */
+body.app-root {
+  background-color: #c8c8c8;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card-primary {
+  background-color: #1a1a1a;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+}
+
+.card-secondary {
+  background-color: #2d2d2d;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+}
+
+.card-elevated {
+  background-color: #363636;
+  border-radius: 8px;
+  padding: 12px;
+  color: #ffffff;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #14b8a6, #22d3ee);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  min-height: 52px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  background: #2d2d2d;
+  color: #ffffff;
+  border: 1px solid #4a4a4a;
+  border-radius: 10px;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 48px;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.text-headline {
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.text-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.text-body {
+  font-size: 16px;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.text-secondary {
+  font-size: 14px;
+  font-weight: 500;
+  color: #a0a0a0;
+}
+
+.text-caption {
+  font-size: 12px;
+  font-weight: 500;
+  color: #a0a0a0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.text-accent {
+  color: #14b8a6;
+}
+
+.text-negative {
+  color: #ef4444;
+}
+
+.text-price {
+  font-size: 34px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #14b8a6, #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

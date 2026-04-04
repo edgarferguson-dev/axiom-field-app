@@ -16,5 +16,8 @@ export function mapSearchResults(raw: unknown): BusinessLookupMatch[] {
     category: r.category ?? "business",
     rating: r.rating ?? null,
     reviewCount: r.reviewCount ?? null,
+    latitude: r.latitude ?? null,
+    longitude: r.longitude ?? null,
+    primaryType: r.primaryType ?? null,
   }));
 }

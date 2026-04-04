@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       headers: {
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "id,displayName,formattedAddress,nationalPhoneNumber,internationalPhoneNumber,rating,userRatingCount,websiteUri,types",
+          "id,displayName,formattedAddress,nationalPhoneNumber,internationalPhoneNumber,rating,userRatingCount,websiteUri,types,location,primaryType",
       },
     });
 
@@ -44,11 +44,14 @@ export async function POST(req: Request) {
       userRatingCount?: number;
       websiteUri?: string;
       types?: string[];
+      location?: { latitude?: number; longitude?: number };
+      primaryType?: string;
     };
 
     const types = p.types ?? [];
     const category =
       types.find((t) => t !== "establishment" && t !== "point_of_interest") ?? types[0] ?? "business";
+    const pt = p.primaryType ?? category;
 
     const match = {
       provider: "google_places" as const,
@@ -60,6 +63,9 @@ export async function POST(req: Request) {
       rating: typeof p.rating === "number" ? p.rating : null,
       reviewCount: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
       category: category.replace(/_/g, " "),
+      latitude: typeof p.location?.latitude === "number" ? p.location.latitude : null,
+      longitude: typeof p.location?.longitude === "number" ? p.location.longitude : null,
+      primaryType: pt,
     };
 
     return NextResponse.json({ match });

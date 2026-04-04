@@ -68,7 +68,7 @@ export const PRESENTATION_BEATS: PresentationBeat[] = [
   },
   {
     id: "offer",
-    slideTypes: ["pricing", "presentation-actions"],
+    slideTypes: ["pricing", "health-report-share", "presentation-actions"],
     goal: "They accept a clear next step.",
     oneLiners: [
       "Which option fits how you want to start?",

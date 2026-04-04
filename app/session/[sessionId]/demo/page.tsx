@@ -41,6 +41,7 @@ export default function DemoPage({
   const refreshDemoInsightLayer = useSessionStore((s) => s.refreshDemoInsightLayer);
   const liveSignal = useSessionStore((s) => s.signal);
   const buyerState = useSessionStore((s) => s.buyerState);
+  const setLiveDemoBuyerStarted = useSessionStore((s) => s.setLiveDemoBuyerStarted);
 
   useEffect(() => {
     if (!session) return;
@@ -94,7 +95,8 @@ export default function DemoPage({
     markStarted();
     setPhase("live-demo");
     setStarted(true);
-  }, [markStarted, setPhase]);
+    setLiveDemoBuyerStarted(true);
+  }, [markStarted, setPhase, setLiveDemoBuyerStarted]);
 
   const handleGetCoaching = useCallback(async () => {
     if (!session?.business || !session?.preCallIntel) return;

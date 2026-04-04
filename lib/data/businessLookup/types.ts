@@ -16,6 +16,11 @@ export type BusinessLookupMatch = {
   category: string;
   rating: number | null;
   reviewCount?: number | null;
+  /** Places API (New) — WGS84 */
+  latitude?: number | null;
+  longitude?: number | null;
+  /** e.g. `barber_shop` */
+  primaryType?: string | null;
 };
 
 /** Normalized prefill written into `BusinessProfile` + optional CRM. */

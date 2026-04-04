@@ -8,6 +8,7 @@ import {
   fetchPlaceDetails,
   type BusinessLookupMatch,
 } from "@/lib/data/businessLookup";
+import type { PlacesApplyMeta } from "@/lib/data/businessLookup/placesMeta";
 import { mergeFormWithDirectoryMatch } from "@/lib/field/directoryAutofill";
 
 const EXTRA_FIELDS: {
@@ -30,13 +31,14 @@ type BusinessLookupPanelProps = {
   onChange: (patch: Partial<BusinessProfile>) => void;
   /**
    * RFC 6 — Fired after Places search row + optional details fetch.
-   * Passes the full merged profile (directory + existing form fields). Pre-call AI uses this context after any rep edits.
+   * `meta` carries lat/lng/type for gap + neighborhood pipeline.
    */
-  onDirectoryApply?: (merged: BusinessProfile) => void;
+  onDirectoryApply?: (merged: BusinessProfile, meta?: PlacesApplyMeta) => void;
   businessTypes: string[];
 };
 
 export function BusinessLookupPanel({ form, onChange, onDirectoryApply, businessTypes }: BusinessLookupPanelProps) {
+  const [placesSearchQuery, setPlacesSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<BusinessLookupMatch[]>([]);
   const [enriching, setEnriching] = useState(false);
@@ -55,6 +57,19 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
     }
   }, [form.name]);
 
+  const handleGoogleSearch = useCallback(async () => {
+    const q = placesSearchQuery.trim();
+    if (!q) return;
+    setSearching(true);
+    setResults([]);
+    try {
+      const r = await searchBusinesses(q);
+      setResults(r);
+    } finally {
+      setSearching(false);
+    }
+  }, [placesSearchQuery]);
+
   const applyMatch = useCallback(
     async (m: BusinessLookupMatch) => {
       setEnriching(true);
@@ -65,10 +80,15 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
           if (details) enriched = { ...m, ...details, name: details.name || m.name };
         }
         const merged = mergeFormWithDirectoryMatch(form, enriched, businessTypes);
+        const meta: PlacesApplyMeta = {
+          latitude: enriched.latitude ?? null,
+          longitude: enriched.longitude ?? null,
+          primaryType: enriched.primaryType ?? null,
+        };
         if (onDirectoryApply) {
-          onDirectoryApply(merged);
+          onDirectoryApply(merged, meta);
         } else {
-          const patch: Partial<BusinessProfile> = {
+          onChange({
             name: merged.name,
             type: merged.type,
             address: merged.address,
@@ -77,10 +97,10 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
             rating: merged.rating,
             reviewCount: merged.reviewCount,
             directoryPlaceId: merged.directoryPlaceId,
-          };
-          onChange(patch);
+          });
         }
         setResults([]);
+        setPlacesSearchQuery("");
       } finally {
         setEnriching(false);
       }
@@ -93,13 +113,35 @@ export function BusinessLookupPanel({ form, onChange, onDirectoryApply, business
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Account</p>
         <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Who you&apos;re visiting</h3>
-        <p className="mt-1 text-sm text-muted">Search, pick the row, confirm core fields — extra contact fields stay tucked away.</p>
+        <p className="mt-1 text-sm text-muted">Search Google (Brooklyn-biased), pick a row — form fills + gap scan runs.</p>
       </div>
 
       <div className="space-y-4">
+        <div className="rounded-xl border border-border/80 bg-card/40 p-3">
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
+            Google Places
+          </label>
+          <input
+            type="text"
+            placeholder="Search business name…"
+            value={placesSearchQuery}
+            onChange={(e) => setPlacesSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void handleGoogleSearch()}
+            className="mb-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          />
+          <button
+            type="button"
+            onClick={() => void handleGoogleSearch()}
+            disabled={searching || !placesSearchQuery.trim()}
+            className="btn-primary"
+          >
+            {searching ? "Searching…" : "Search Google"}
+          </button>
+        </div>
+
         <div>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted">
-            Business name
+            Business name (manual)
           </label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input

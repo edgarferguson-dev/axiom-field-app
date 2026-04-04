@@ -16,7 +16,8 @@ export type SlideType =
   | "mock-flow"
   | "comparison-proof"
   | "impact-stat"
-  | "decision-next";
+  | "decision-next"
+  | "health-report-share";
 
 export type PricingTier = {
   id: string;
@@ -45,6 +46,7 @@ type ClassicTextSlideType = Exclude<
   | "comparison-proof"
   | "impact-stat"
   | "decision-next"
+  | "health-report-share"
 >;
 
 export type PresentationSlide =
@@ -111,6 +113,9 @@ export type PresentationSlide =
       bridge: string;
       conversation?: MerchantProofBeatCue;
       merchantVisual?: MerchantVisualSurface;
+    })
+  | (BaseSlide & {
+      type: "health-report-share";
     });
 
 // StrategyPackage is used to shape the pitch, without touching store logic.

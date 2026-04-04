@@ -26,6 +26,8 @@ function stageGuidance(
         : "Complete the proof walkthrough together — then pricing unlocks.";
     case "pricing":
       return "One start option — let them nod, then continue.";
+    case "health-report-share":
+      return "Offer to text them the report — keep it lightweight.";
     case "presentation-actions":
       return "Pick the path that matches the room. Start setup is the forward motion when they are ready.";
     default:
@@ -198,6 +200,8 @@ export function PresentationEngine({
 
   const pricingIdx = findSlideIndex(slides, "pricing");
   const actionsIdx = findSlideIndex(slides, "presentation-actions");
+  const healthIdx = findSlideIndex(slides, "health-report-share");
+  const postPricingIdx = healthIdx >= 0 ? healthIdx : actionsIdx;
   const canSkipToOffer = pricingIdx >= 0 && index < pricingIdx;
   const chapterIdx = narrativeChapterIndexForSlideType(slide.type);
 
@@ -453,11 +457,11 @@ export function PresentationEngine({
                   disabled={!selectedTierId}
                   onClick={() => {
                     setPresentationPricingResponse("accept");
-                    if (actionsIdx >= 0) setIndex(actionsIdx);
+                    if (postPricingIdx >= 0) setIndex(postPricingIdx);
                     onPricingAccept?.();
                   }}
                 >
-                  {actionsIdx >= 0 ? "Continue to decision" : "Continue"}
+                  {postPricingIdx >= 0 ? "Continue" : "Continue"}
                 </button>
                 <button
                   type="button"

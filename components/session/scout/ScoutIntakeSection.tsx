@@ -12,6 +12,7 @@ import { BusinessLookupPanel } from "@/components/field-read/BusinessLookupPanel
 import { FormSelect } from "@/components/field-read/FormSelect";
 import { SCOUT_LEAD_SOURCES, SCOUT_LEAD_SYSTEMS } from "@/lib/field/scoutOptions";
 import { DecisionCard } from "@/components/field-read/DecisionCard";
+import type { PlacesApplyMeta } from "@/lib/data/businessLookup/placesMeta";
 
 type ScoutIntakeSectionProps = {
   form: BusinessProfile;
@@ -31,7 +32,7 @@ type ScoutIntakeSectionProps = {
   engagementGate: FieldEngagementDecision | null;
   canShowEngagementGate: boolean;
   /** RFC 6 — Places/directory merged profile (also updates session). */
-  onDirectoryApply?: (merged: BusinessProfile) => void;
+  onDirectoryApply?: (merged: BusinessProfile, meta?: PlacesApplyMeta) => void;
   /** RFC 6 — unix ms when a directory row was applied; drives compact hint only. */
   directoryAutofillAt: number | null;
 };

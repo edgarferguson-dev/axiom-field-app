@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { PreCallIntel, RiskBand, TabletGuidance, ChannelMode } from "@/types/session";
+import type { NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
 import { cn } from "@/lib/utils/cn";
 
 const RISK_CONFIG: Record<RiskBand, { label: string; color: string; bg: string }> = {
@@ -115,10 +116,12 @@ function SecondaryCard({ title, children }: { title: string; children: ReactNode
 
 type PreCallBriefPanelProps = {
   intel: PreCallIntel;
+  painExtras: PainBriefExtras | null;
+  neighborhood: NeighborhoodComparison | null;
   onContinue: () => void;
 };
 
-export function PreCallBriefPanel({ intel, onContinue }: PreCallBriefPanelProps) {
+export function PreCallBriefPanel({ intel, painExtras, neighborhood, onContinue }: PreCallBriefPanelProps) {
   const risk = RISK_CONFIG[intel.riskBand] ?? RISK_CONFIG.medium;
   const tablet = TABLET[intel.tabletGuidance] ?? TABLET.either;
   const channel = CHANNEL[intel.channelMode] ?? CHANNEL["verbal-first"];
@@ -147,6 +150,37 @@ export function PreCallBriefPanel({ intel, onContinue }: PreCallBriefPanelProps)
 
       {/* PRIMARY: scan order = opener → anchor → objection → avoid → CTA */}
       <div className="space-y-5">
+        {painExtras ? (
+          <div className="card-secondary space-y-3 border border-border/30 !bg-[#1a1a1a] !text-white">
+            <p className="text-caption !text-teal-400">Pain-driven walk-in</p>
+            <p className="text-sm font-semibold text-white/95">&ldquo;{painExtras.openingQuestion}&rdquo;</p>
+            <p className="text-sm text-white/80">{painExtras.openingStatement}</p>
+            <p className="text-sm font-medium text-teal-300/90">Probe: {painExtras.followUpProbe}</p>
+            <div>
+              <p className="text-caption mb-1 !text-white/50">Listen for</p>
+              <ul className="list-inside list-disc text-sm text-white/75">
+                {painExtras.listenFor.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-xs text-white/55">{painExtras.firstBeatNote}</p>
+          </div>
+        ) : null}
+
+        {neighborhood ? (
+          <div className="card-elevated border border-border/30 !bg-[#2d2d2d] !text-white">
+            <p className="text-caption !text-teal-400">Competitive landscape</p>
+            <p className="mt-2 text-sm font-medium text-white/90">
+              {neighborhood.totalNearby} similar within ~0.5 miles · {neighborhood.withBooking} with a website
+              on Google · {neighborhood.withHighRating} at 4.5+ stars
+            </p>
+            <p className="mt-1 text-xs text-white/55">
+              Avg {neighborhood.avgRating.toFixed(1)}★ · ~{Math.round(neighborhood.avgReviews)} reviews
+            </p>
+          </div>
+        ) : null}
+
         <PrimaryBlock kicker="Best opener" variant="opener">
           <p className="text-[1.125rem] font-semibold leading-snug tracking-tight text-foreground sm:text-xl">
             &ldquo;{intel.recommendedAngle}&rdquo;
@@ -172,12 +206,8 @@ export function PreCallBriefPanel({ intel, onContinue }: PreCallBriefPanelProps)
 
       {/* Dominant CTA — strongest action on screen */}
       <div className="mt-8 space-y-2">
-        <button
-          type="button"
-          onClick={onContinue}
-          className="w-full rounded-2xl bg-accent px-6 py-4 text-base font-bold text-white shadow-[0_4px_14px_-3px_rgba(37,99,235,0.55)] ring-2 ring-accent/25 transition hover:opacity-[0.96] active:scale-[0.99] sm:py-[1.125rem] sm:text-lg"
-        >
-          Open live demo →
+        <button type="button" onClick={onContinue} className="btn-primary">
+          Start Proof Run →
         </button>
         <p className="text-center text-xs text-muted">Proof in the room starts here.</p>
       </div>
