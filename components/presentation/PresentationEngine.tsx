@@ -35,6 +35,7 @@ function stageGuidance(
   }
 }
 import { narrativeChapterIndexForSlideType, NARRATIVE_CHAPTERS } from "@/lib/presentation/narrativeChapter";
+import { resolveActiveOfferTemplate } from "@/lib/presentation/resolveActiveOfferTemplate";
 import { BeatOneLiners } from "@/components/presentation/BeatOneLiners";
 import { PricingCard } from "@/components/presentation/PricingCard";
 import { SlideRenderer } from "@/components/presentation/SlideRenderer";
@@ -78,6 +79,18 @@ export function PresentationEngine({
 }: PresentationEngineProps) {
   const business = useSessionStore((s) => s.session?.business);
   const presentation = useSessionStore((s) => s.session?.presentation);
+  const gapDiagnosis = useSessionStore((s) => s.session?.gapDiagnosis);
+  const sessionForOffer = useSessionStore((s) => s.session);
+  const offerTemplates = useSessionStore((s) => s.offerTemplates);
+  const defaultOfferTemplateId = useSessionStore((s) => s.defaultOfferTemplateId);
+  const activeOffer =
+    sessionForOffer && offerTemplates.length > 0
+      ? resolveActiveOfferTemplate({
+          offerTemplates,
+          defaultOfferTemplateId,
+          session: sessionForOffer,
+        })
+      : null;
   const ensurePresentationSlides = useSessionStore((s) => s.ensurePresentationSlides);
   const setPresentationPricingTierId = useSessionStore((s) => s.setPresentationPricingTierId);
   const setPresentationPricingResponse = useSessionStore((s) => s.setPresentationPricingResponse);
@@ -397,6 +410,35 @@ export function PresentationEngine({
                   : "One offer on screen — nod means you’re aligned."}
               </p>
             </div>
+            {gapDiagnosis && activeOffer ? (
+              <div
+                className={cn(
+                  "rounded-xl border px-4 py-3.5",
+                  daniSurface
+                    ? "border-teal-500/25 bg-black/35 text-white"
+                    : "border-accent/25 bg-accent/[0.05]"
+                )}
+              >
+                <p
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-[0.18em]",
+                    daniSurface ? "text-teal-400/95" : "text-accent"
+                  )}
+                >
+                  Value frame
+                </p>
+                <p
+                  className={cn(
+                    "mt-2 text-sm leading-snug",
+                    daniSurface ? "text-white/88" : "text-foreground/90"
+                  )}
+                >
+                  Directional leak is about ~${gapDiagnosis.estimatedMonthlyLeakage.toLocaleString()}/mo on the table.
+                  If this pilot recovers even a fraction, {activeOffer.label} at ${activeOffer.monthlyFee}/mo compares to
+                  that leak — not to a feature checklist.
+                </p>
+              </div>
+            ) : null}
             {slide.tiers.length === 1 ? (
               <div className="mx-auto max-w-md rounded-xl border border-accent/25 bg-accent/[0.06] px-4 py-4 shadow-inner">
                 <div className="flex items-start justify-between gap-3">
@@ -461,7 +503,7 @@ export function PresentationEngine({
                     onPricingAccept?.();
                   }}
                 >
-                  {postPricingIdx >= 0 ? "Continue" : "Continue"}
+                  Yes — continue
                 </button>
                 <button
                   type="button"
@@ -508,7 +550,7 @@ export function PresentationEngine({
               <p className={cn("mt-1 text-muted", daniSurface ? "max-w-2xl text-base text-foreground/75" : "text-sm")}>
                 {daniSurface
                   ? "One clear motion — lead with setup when they are ready."
-                  : "The buyer should see one clear motion. Lead with setup when they&apos;re ready to move."}
+                  : "The buyer should see one clear motion. Lead with setup when they are ready to move."}
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

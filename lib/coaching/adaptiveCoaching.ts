@@ -10,6 +10,13 @@ export type CoachingLine = {
   cue: string;
 };
 
+/** Optional scout/diagnosis lines — bounded overlay on beat cues, not open generation. */
+export type DiagnosisCoachingHints = {
+  openingQuestion?: string;
+  followUpProbe?: string;
+  primaryGapLabel?: string;
+};
+
 export type AdaptiveCoachingInput = {
   buyerState: BuyerState;
   signal: SignalColor;
@@ -18,6 +25,7 @@ export type AdaptiveCoachingInput = {
   currentStep: string | null;
   /** When set (proof beat with cues), aligns the five-move rail with MerchantProofCoachRail doctrine */
   merchantProofBeat?: MerchantProofBeatCue | null;
+  diagnosisHints?: DiagnosisCoachingHints;
 };
 
 export type AdaptiveCoachingOutput = {
@@ -39,7 +47,8 @@ function merchantProofCoachingOverlay(
   beat: MerchantProofBeatCue,
   buyerState: BuyerState,
   signal: SignalColor,
-  momentum: CoachingMomentum
+  momentum: CoachingMomentum,
+  hints?: DiagnosisCoachingHints
 ): AdaptiveCoachingOutput {
   const intent = beat.transitionIntent ?? "continue_proof";
   const room = matrix(buyerState, signal, momentum);
@@ -57,10 +66,16 @@ function merchantProofCoachingOverlay(
         room.rebuttals[0]?.cue ?? "Still hands."
       );
 
+  const sayLine = hints?.openingQuestion?.trim() || beat.openingQuestion;
+  const probeLine = hints?.followUpProbe?.trim() || beat.reactionProbe;
+  const backupLine = hints?.primaryGapLabel?.trim()
+    ? `${beat.privateCoachCue} · Pin: ${hints.primaryGapLabel.trim()}`
+    : beat.privateCoachCue;
+
   return {
     nextMove: L(transitionIntentLabel(intent), beat.transitionTrigger),
-    sayThis: L(beat.openingQuestion, "Ask once — then turn the screen, not your mouth."),
-    question: L(beat.reactionProbe, "After they answer — don’t rescue with features."),
+    sayThis: L(sayLine, "Ask once — then turn the screen, not your mouth."),
+    question: L(probeLine, "After they answer — don’t rescue with features."),
     rebuttals: [
       firstPushback,
       L(beat.silenceCue, "Quiet is part of the close — protect it."),
@@ -68,16 +83,16 @@ function merchantProofCoachingOverlay(
         ? [L(beat.hesitationCue, "Stall isn’t no — breathe once, then one line.")]
         : []),
     ],
-    backup: L(beat.privateCoachCue, mom),
+    backup: L(backupLine, mom),
   };
 }
 
 export function getAdaptiveCoaching(input: AdaptiveCoachingInput): AdaptiveCoachingOutput {
-  const { buyerState, signal, momentum, phase, currentStep, merchantProofBeat } = input;
+  const { buyerState, signal, momentum, phase, currentStep, merchantProofBeat, diagnosisHints } = input;
   const phaseBoost = phase === "offer-fit" || phase === "closing";
 
   if (merchantProofBeat && !phaseBoost) {
-    return merchantProofCoachingOverlay(merchantProofBeat, buyerState, signal, momentum);
+    return merchantProofCoachingOverlay(merchantProofBeat, buyerState, signal, momentum, diagnosisHints);
   }
 
   const core = matrix(buyerState, signal, momentum);

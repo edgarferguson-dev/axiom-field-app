@@ -1,8 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { PreCallIntel, RiskBand, TabletGuidance, ChannelMode } from "@/types/session";
-import type { NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
+import type { BusinessProfile, PreCallIntel, RiskBand, TabletGuidance, ChannelMode } from "@/types/session";
+import type { GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
+import {
+  LeakageBarPoster,
+  NeighborhoodComparePoster,
+  RatingGapStrip,
+} from "@/components/presentation/controlled/DiagnosisVisuals";
+import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
 import { cn } from "@/lib/utils/cn";
 
 const RISK_CONFIG: Record<RiskBand, { label: string; color: string; bg: string }> = {
@@ -118,10 +124,19 @@ type PreCallBriefPanelProps = {
   intel: PreCallIntel;
   painExtras: PainBriefExtras | null;
   neighborhood: NeighborhoodComparison | null;
+  gapDiagnosis: GapDiagnosis | null;
+  businessProfile: BusinessProfile | null;
   onContinue: () => void;
 };
 
-export function PreCallBriefPanel({ intel, painExtras, neighborhood, onContinue }: PreCallBriefPanelProps) {
+export function PreCallBriefPanel({
+  intel,
+  painExtras,
+  neighborhood,
+  gapDiagnosis,
+  businessProfile,
+  onContinue,
+}: PreCallBriefPanelProps) {
   const risk = RISK_CONFIG[intel.riskBand] ?? RISK_CONFIG.medium;
   const tablet = TABLET[intel.tabletGuidance] ?? TABLET.either;
   const channel = CHANNEL[intel.channelMode] ?? CHANNEL["verbal-first"];
@@ -153,6 +168,11 @@ export function PreCallBriefPanel({ intel, painExtras, neighborhood, onContinue 
         {painExtras ? (
           <div className="card-secondary space-y-3 border border-border/30 !bg-[#1a1a1a] !text-white">
             <p className="text-caption !text-teal-400">Pain-driven walk-in</p>
+            {painExtras.primaryPainHeadline ? (
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
+                {painExtras.primaryPainHeadline}
+              </p>
+            ) : null}
             <p className="text-sm font-semibold text-white/95">&ldquo;{painExtras.openingQuestion}&rdquo;</p>
             <p className="text-sm text-white/80">{painExtras.openingStatement}</p>
             <p className="text-sm font-medium text-teal-300/90">Probe: {painExtras.followUpProbe}</p>
@@ -168,12 +188,30 @@ export function PreCallBriefPanel({ intel, painExtras, neighborhood, onContinue 
           </div>
         ) : null}
 
-        {neighborhood ? (
+        {gapDiagnosis ? (
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} className="!border-white/15" />
+              {neighborhood ? (
+                <NeighborhoodComparePoster data={neighborhood} className="!border-white/15" />
+              ) : null}
+            </div>
+            {businessProfile ? (
+              <RatingGapStrip
+                rating={parseScoutRating(businessProfile.rating)}
+                reviewCount={parseScoutReviewCount(businessProfile.reviewCount)}
+                className="!border-white/15"
+              />
+            ) : null}
+          </div>
+        ) : null}
+
+        {neighborhood && !gapDiagnosis ? (
           <div className="card-elevated border border-border/30 !bg-[#2d2d2d] !text-white">
             <p className="text-caption !text-teal-400">Competitive landscape</p>
             <p className="mt-2 text-sm font-medium text-white/90">
               {neighborhood.totalNearby} similar within ~0.5 miles · {neighborhood.withBooking} with a website
-              on Google · {neighborhood.withHighRating} at 4.5+ stars
+              link on Google · {neighborhood.withHighRating} at 4.5+ stars
             </p>
             <p className="mt-1 text-xs text-white/55">
               Avg {neighborhood.avgRating.toFixed(1)}★ · ~{Math.round(neighborhood.avgReviews)} reviews
@@ -181,21 +219,19 @@ export function PreCallBriefPanel({ intel, painExtras, neighborhood, onContinue 
           </div>
         ) : null}
 
-        <PrimaryBlock kicker="Best opener" variant="opener">
-          <p className="text-[1.125rem] font-semibold leading-snug tracking-tight text-foreground sm:text-xl">
-            &ldquo;{intel.recommendedAngle}&rdquo;
-          </p>
-        </PrimaryBlock>
+        {!painExtras ? (
+          <PrimaryBlock kicker="Best opener" variant="opener">
+            <p className="text-[1.125rem] font-semibold leading-snug tracking-tight text-foreground sm:text-xl">
+              &ldquo;{intel.recommendedAngle}&rdquo;
+            </p>
+          </PrimaryBlock>
+        ) : null}
 
         {anchorFirst ? (
           <PrimaryBlock kicker="Anchor first">
             <p className="text-base font-medium leading-relaxed text-foreground sm:text-[1.0625rem]">{anchorFirst}</p>
           </PrimaryBlock>
         ) : null}
-
-        <PrimaryBlock kicker="Likely objection">
-          <p className="text-base font-medium leading-relaxed text-foreground sm:text-[1.0625rem]">{intel.likelyObjection}</p>
-        </PrimaryBlock>
 
         {avoid ? (
           <PrimaryBlock kicker="What not to lead with" variant="avoid">
@@ -230,6 +266,8 @@ export function PreCallBriefPanel({ intel, painExtras, neighborhood, onContinue 
           {first90 ? (
             <SecondaryCard title="Cadence">{first90}</SecondaryCard>
           ) : null}
+
+          <SecondaryCard title="If they stall">{intel.likelyObjection}</SecondaryCard>
 
           <div className="space-y-3">
             <SecondaryCard title="When to show the device">

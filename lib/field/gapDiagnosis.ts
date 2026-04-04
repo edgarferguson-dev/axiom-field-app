@@ -1,13 +1,13 @@
 import type { BusinessProfile } from "@/types/session";
 import type { GapDiagnosis, GapItem } from "@/types/scoutIntel";
 
-function parseRating(rating?: string): number | null {
+export function parseScoutRating(rating?: string): number | null {
   if (rating == null || rating === "") return null;
   const n = Number.parseFloat(String(rating).replace(/[^\d.]/g, ""));
   return Number.isFinite(n) ? n : null;
 }
 
-function parseReviewCount(raw?: string): number | null {
+export function parseScoutReviewCount(raw?: string): number | null {
   if (raw == null || raw === "") return null;
   const n = Number.parseInt(String(raw).replace(/\D/g, ""), 10);
   return Number.isFinite(n) ? n : null;
@@ -68,7 +68,7 @@ export function diagnoseGaps(scout: BusinessProfile, placesPrimaryType?: string 
     });
   }
 
-  const reviewCount = parseReviewCount(scout.reviewCount);
+  const reviewCount = parseScoutReviewCount(scout.reviewCount);
   if (reviewCount !== null && reviewCount < 20) {
     gaps.push({
       type: "low-reviews",
@@ -77,7 +77,7 @@ export function diagnoseGaps(scout: BusinessProfile, placesPrimaryType?: string 
     });
   }
 
-  const googleRating = parseRating(scout.rating);
+  const googleRating = parseScoutRating(scout.rating);
   if (googleRating !== null && googleRating < 4.0) {
     gaps.push({
       type: "low-rating",

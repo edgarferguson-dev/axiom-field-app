@@ -44,4 +44,8 @@ export type PainBriefExtras = {
   followUpProbe: string;
   listenFor: string[];
   firstBeatNote: string;
+  /** Short label for coaching / backup (e.g. top high-severity gap). */
+  primaryGapShortLabel?: string;
+  /** One-line diagnosis headline for the pain card. */
+  primaryPainHeadline?: string;
 };

@@ -323,6 +323,8 @@ export default function FieldReadPage({
             briefSource={preCallIntelSource}
             painExtras={session?.painBriefExtras ?? null}
             neighborhood={session?.neighborhoodComparison ?? null}
+            gapDiagnosis={session?.gapDiagnosis ?? null}
+            businessProfile={session?.business ?? null}
             onContinue={goToDemo}
             onNewScout={handleRescan}
           />

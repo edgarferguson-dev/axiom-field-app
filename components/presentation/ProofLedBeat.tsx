@@ -6,7 +6,14 @@ import {
   type PresentationVisualPattern,
 } from "@/lib/presentation/assets";
 import { MerchantProofVisual } from "@/components/presentation/merchant/MerchantProofVisuals";
+import {
+  GapChipList,
+  LeakageBarPoster,
+  NeighborhoodComparePoster,
+  RatingGapStrip,
+} from "@/components/presentation/controlled/DiagnosisVisuals";
 import { DaniPhoneSteps } from "@/components/presentation/proof-beats/DaniPhoneSteps";
+import { parseScoutRating, parseScoutReviewCount } from "@/lib/field/gapDiagnosis";
 import { useSessionStore } from "@/store/session-store";
 import { cn } from "@/lib/utils/cn";
 
@@ -127,7 +134,10 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
   const dani = tone === "dani";
   const businessName = useSessionStore((s) => s.session?.business?.name);
   const businessType = useSessionStore((s) => s.session?.business?.type?.trim() ?? "");
+  const businessRating = useSessionStore((s) => s.session?.business?.rating);
+  const businessReviewCount = useSessionStore((s) => s.session?.business?.reviewCount);
   const gapDiagnosis = useSessionStore((s) => s.session?.gapDiagnosis);
+  const neighborhood = useSessionStore((s) => s.session?.neighborhoodComparison ?? null);
   const statContextLine = businessType ? `How ${businessType} owners usually describe the leak` : undefined;
 
   const mv = "merchantVisual" in slide ? slide.merchantVisual : undefined;
@@ -141,26 +151,20 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
       return (
         <div className={cn("space-y-5", dani && "space-y-6")}>
           {dani && gapDiagnosis?.gaps?.length ? (
-            <div className="card-secondary space-y-2 !bg-[#1a1a1a]">
-              <p className="text-caption !text-teal-400">Pain mirror</p>
-              <p className="text-title !text-lg">{businessName}</p>
-              <ul className="space-y-2">
-                {gapDiagnosis.gaps.map((g) => (
-                  <li
-                    key={g.type}
-                    className={cn(
-                      "flex items-center justify-between rounded-lg px-3 py-2 text-sm",
-                      g.severity === "high" ? "bg-red-500/15 text-white" : "bg-amber-500/10 text-white/90"
-                    )}
-                  >
-                    <span>{g.label}</span>
-                    <span className="text-xs font-bold text-white/60">{g.severity}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-white/55">
-                ~${gapDiagnosis.estimatedMonthlyLeakage.toLocaleString()}/mo estimated leakage
-              </p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-caption !text-teal-400">Diagnosed gaps</p>
+                {businessName ? <p className="text-title mt-1 !text-lg text-white">{businessName}</p> : null}
+              </div>
+              <GapChipList diagnosis={gapDiagnosis} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} />
+                {neighborhood ? <NeighborhoodComparePoster data={neighborhood} /> : null}
+              </div>
+              <RatingGapStrip
+                rating={parseScoutRating(businessRating)}
+                reviewCount={parseScoutReviewCount(businessReviewCount)}
+              />
             </div>
           ) : null}
           <MerchantProofVisual surface={mv} {...merchantProps} />
@@ -291,7 +295,17 @@ export function ProofLedBeat({ slide, tone = "default" }: ProofLedBeatProps) {
     if (mv) {
       return (
         <div className={cn("space-y-5", dani && "space-y-6")}>
-          <MerchantProofVisual surface={mv} statText={slide.stat} {...merchantProps} />
+          <div
+            className={cn(
+              "grid gap-4",
+              dani && gapDiagnosis ? "sm:grid-cols-2 sm:items-stretch" : "sm:grid-cols-1"
+            )}
+          >
+            <MerchantProofVisual surface={mv} statText={slide.stat} {...merchantProps} />
+            {dani && gapDiagnosis ? (
+              <LeakageBarPoster monthlyLeakage={gapDiagnosis.estimatedMonthlyLeakage} className="h-full" />
+            ) : null}
+          </div>
           <p className="text-center text-sm font-medium text-muted sm:text-left">{slide.statSub}</p>
           <p className={cn("rounded-lg border border-border/50 bg-card/30 px-4 py-3 text-sm font-medium text-foreground", dani && "text-base")}>
             {slide.takeaway}

@@ -1,5 +1,5 @@
-import type { PreCallIntel, PreCallSource } from "@/types/session";
-import type { NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
+import type { BusinessProfile, PreCallIntel, PreCallSource } from "@/types/session";
+import type { GapDiagnosis, NeighborhoodComparison, PainBriefExtras } from "@/types/scoutIntel";
 import { PreCallBriefPanel } from "@/components/field-read/PreCallBriefPanel";
 
 type ScoutBriefSectionProps = {
@@ -8,6 +8,8 @@ type ScoutBriefSectionProps = {
   briefSource: PreCallSource | null;
   painExtras: PainBriefExtras | null;
   neighborhood: NeighborhoodComparison | null;
+  gapDiagnosis: GapDiagnosis | null;
+  businessProfile: BusinessProfile | null;
   onContinue: () => void;
   onNewScout: () => void;
 };
@@ -17,6 +19,8 @@ export function ScoutBriefSection({
   briefSource,
   painExtras,
   neighborhood,
+  gapDiagnosis,
+  businessProfile,
   onContinue,
   onNewScout,
 }: ScoutBriefSectionProps) {
@@ -60,6 +64,8 @@ export function ScoutBriefSection({
         intel={intel}
         painExtras={painExtras}
         neighborhood={neighborhood}
+        gapDiagnosis={gapDiagnosis}
+        businessProfile={businessProfile}
         onContinue={onContinue}
       />
     </div>
