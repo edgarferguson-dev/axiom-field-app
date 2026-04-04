@@ -1,6 +1,8 @@
 /**
  * Formal Proof Run runtime (buyer-facing deck) — beats 1–6 + complete.
  * Distinct from RFC proof blocks (`proofSequence`); this drives presentation progression only.
+ *
+ * Deck ↔ phase mapping lives in `@/lib/proofRun/canonicalDeckMapping` (canonical beat ↔ slide `type`).
  */
 
 export type ProofRunPhase =
@@ -69,41 +71,7 @@ export function createIdleProofRun(): ProofRunRuntimeState {
   };
 }
 
-export function proofRunPhaseFromSlideIndex(index: number): ProofRunPhase {
-  if (index <= 0) return "beat-1";
-  if (index === 1) return "beat-2";
-  if (index === 2) return "beat-3";
-  if (index === 3) return "beat-4";
-  if (index === 4) return "beat-5";
-  if (index === 5) return "beat-6";
-  return "complete";
-}
-
 export function proofRunBeatIdFromPhase(phase: ProofRunPhase): ProofRunBeatId | null {
   if (phase === "idle" || phase === "complete") return null;
   return phase;
-}
-
-export function slideIndexForProofRunPhase(phase: ProofRunPhase, slideCount: number): number {
-  if (slideCount <= 0) return 0;
-  switch (phase) {
-    case "idle":
-      return 0;
-    case "beat-1":
-      return 0;
-    case "beat-2":
-      return Math.min(1, slideCount - 1);
-    case "beat-3":
-      return Math.min(2, slideCount - 1);
-    case "beat-4":
-      return Math.min(3, slideCount - 1);
-    case "beat-5":
-      return Math.min(4, slideCount - 1);
-    case "beat-6":
-      return Math.min(5, slideCount - 1);
-    case "complete":
-      return Math.min(6, slideCount - 1);
-    default:
-      return 0;
-  }
 }

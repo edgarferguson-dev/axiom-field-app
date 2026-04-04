@@ -39,6 +39,7 @@ import { resolveActiveOfferTemplate } from "@/lib/presentation/resolveActiveOffe
 import { BeatOneLiners } from "@/components/presentation/BeatOneLiners";
 import { PricingCard } from "@/components/presentation/PricingCard";
 import { SlideRenderer } from "@/components/presentation/SlideRenderer";
+import { slideIndexForAskBeat, slideIndexForHealthReportBeat } from "@/lib/proofRun/canonicalDeckMapping";
 
 /** End-of-deck actions from demo — wired in demo page only. */
 export type PresentationEndAction =
@@ -63,11 +64,6 @@ type PresentationEngineProps = {
 };
 
 const EMPTY_SLIDES: PresentationSlide[] = [];
-
-function findSlideIndex(slides: PresentationSlide[], type: SlideType): number {
-  const idx = slides.findIndex((s) => s.type === type);
-  return idx >= 0 ? idx : 0;
-}
 
 export function PresentationEngine({
   proceedToPricingSignal,
@@ -149,7 +145,8 @@ export function PresentationEngine({
     if (proofRunControlled) {
       proofRunDispatch({ type: "skip-to-ask" });
     } else {
-      setLocalIndex(findSlideIndex(list, "pricing"));
+      const askIdx = slideIndexForAskBeat(list);
+      setLocalIndex(askIdx >= 0 ? askIdx : 0);
     }
   }, [proceedToPricingSignal, generatedSlides, proofRunControlled, proofRunDispatch]);
 
@@ -240,10 +237,11 @@ export function PresentationEngine({
     booking: null,
   };
 
-  const pricingIdx = findSlideIndex(slides, "pricing");
-  const actionsIdx = findSlideIndex(slides, "presentation-actions");
-  const healthIdx = findSlideIndex(slides, "health-report-share");
-  const postPricingIdx = healthIdx >= 0 ? healthIdx : actionsIdx;
+  const pricingIdx = slideIndexForAskBeat(slides);
+  const actionsIdx = slides.findIndex((s) => s.type === "presentation-actions");
+  const healthIdx = slideIndexForHealthReportBeat(slides);
+  const postPricingIdx =
+    healthIdx >= 0 ? healthIdx : actionsIdx >= 0 ? actionsIdx : Math.max(0, slides.length - 1);
   const canSkipToOffer = pricingIdx >= 0 && index < pricingIdx;
   const chapterIdx = narrativeChapterIndexForSlideType(slide.type);
 

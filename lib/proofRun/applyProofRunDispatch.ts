@@ -1,22 +1,18 @@
 import type { PresentationSlide } from "@/lib/flows/presentationEngine";
-import type { SlideType } from "@/lib/flows/presentationEngine";
 import type {
   ProofRunBeatId,
   ProofRunBeatVisit,
   ProofRunDispatchAction,
   ProofRunRuntimeState,
 } from "@/types/proofRun";
+import { createIdleProofRun, proofRunBeatIdFromPhase } from "@/types/proofRun";
 import {
-  createIdleProofRun,
-  proofRunBeatIdFromPhase,
-  proofRunPhaseFromSlideIndex,
-  slideIndexForProofRunPhase,
-} from "@/types/proofRun";
-
-function findSlideIndex(slides: PresentationSlide[], type: SlideType): number {
-  const idx = slides.findIndex((s) => s.type === type);
-  return idx >= 0 ? idx : -1;
-}
+  mayAutoCompleteProofRunFromLastSlide,
+  proofRunPhaseFromDeckIndex,
+  slideIndexForAskBeat,
+  slideIndexForHealthReportBeat,
+  slideIndexForProofRunPhaseInDeck,
+} from "@/lib/proofRun/canonicalDeckMapping";
 
 function clampIndex(i: number, slideCount: number): number {
   if (slideCount <= 0) return 0;
@@ -42,6 +38,17 @@ function openVisit(pr: ProofRunRuntimeState, beatId: ProofRunBeatId, now: number
   };
 }
 
+/** `reachedAsk` / `reachedReport` from canonical phase only (not legacy index rules). */
+function withReachedFlags(pr: ProofRunRuntimeState, newPhase: ProofRunPhaseName): ProofRunRuntimeState {
+  return {
+    ...pr,
+    reachedAsk: pr.reachedAsk || newPhase === "beat-5",
+    reachedReport: pr.reachedReport || newPhase === "beat-6",
+  };
+}
+
+type ProofRunPhaseName = ProofRunRuntimeState["phase"];
+
 function applyIndexAndPhase(
   pr: ProofRunRuntimeState,
   newIdx: number,
@@ -50,11 +57,11 @@ function applyIndexAndPhase(
   slides: PresentationSlide[]
 ): ProofRunRuntimeState {
   const idx = clampIndex(newIdx, slideCount);
-  const newPhase = proofRunPhaseFromSlideIndex(idx);
+  const newPhase = proofRunPhaseFromDeckIndex(slides, idx);
   const oldBeat = proofRunBeatIdFromPhase(pr.phase);
   const newBeat = proofRunBeatIdFromPhase(newPhase);
 
-  let next = { ...pr, lastSlideIndex: idx, phase: newPhase };
+  let next: ProofRunRuntimeState = { ...pr, lastSlideIndex: idx, phase: newPhase };
 
   if (oldBeat !== newBeat) {
     next = closeOpenVisit(next, now);
@@ -63,12 +70,7 @@ function applyIndexAndPhase(
     }
   }
 
-  const pi = findSlideIndex(slides, "pricing");
-  const hi = findSlideIndex(slides, "health-report-share");
-  if (pi >= 0 && idx >= pi) next = { ...next, reachedAsk: true };
-  if (hi >= 0 && idx >= hi) next = { ...next, reachedReport: true };
-
-  return next;
+  return withReachedFlags(next, newPhase);
 }
 
 export function applyProofRunDispatch(args: {
@@ -104,8 +106,14 @@ export function applyProofRunDispatch(args: {
 
     case "next": {
       if (pr.phase === "idle" || n === 0) return { proofRun: pr, activeSlideIndex: 0 };
+      if (pr.runCompletedAt != null) {
+        return { proofRun: pr, activeSlideIndex: clamp(pr.lastSlideIndex) };
+      }
       const cur = clamp(pr.lastSlideIndex);
       if (cur >= n - 1) {
+        if (!mayAutoCompleteProofRunFromLastSlide(slides, cur)) {
+          return { proofRun: pr, activeSlideIndex: cur };
+        }
         let next = closeOpenVisit(pr, now);
         next = {
           ...next,
@@ -116,6 +124,7 @@ export function applyProofRunDispatch(args: {
           currentBeatEnteredAt: null,
           lastSlideIndex: cur,
         };
+        next = withReachedFlags(next, "complete");
         return { proofRun: next, activeSlideIndex: cur };
       }
       const newIdx = cur + 1;
@@ -132,10 +141,12 @@ export function applyProofRunDispatch(args: {
     }
 
     case "skip-to-ask": {
-      const pi = findSlideIndex(slides, "pricing");
-      const target = pi >= 0 ? pi : clamp(5);
-      let next = applyIndexAndPhase(pr, target, n, now, slides);
-      next = { ...next, reachedAsk: true, phase: "beat-6" };
+      const askIdx = slideIndexForAskBeat(slides);
+      if (askIdx < 0) {
+        return { proofRun: pr, activeSlideIndex: clamp(pr.lastSlideIndex) };
+      }
+      const target = clamp(askIdx);
+      const next = applyIndexAndPhase(pr, target, n, now, slides);
       return { proofRun: next, activeSlideIndex: target };
     }
 
@@ -155,8 +166,8 @@ export function applyProofRunDispatch(args: {
 
     case "complete": {
       let next = closeOpenVisit(pr, now);
-      const hi = findSlideIndex(slides, "health-report-share");
-      const completeIdx = hi >= 0 ? clamp(hi) : clamp(Math.min(6, n - 1));
+      const hi = slideIndexForHealthReportBeat(slides);
+      const completeIdx = hi >= 0 ? clamp(hi) : clamp(n - 1);
       next = {
         ...next,
         phase: "complete",
@@ -166,7 +177,7 @@ export function applyProofRunDispatch(args: {
         currentBeatEnteredAt: null,
         lastSlideIndex: completeIdx,
         reachedAsk: true,
-        reachedReport: hi >= 0 && completeIdx >= hi ? true : next.reachedReport,
+        reachedReport: hi >= 0 ? true : next.reachedReport,
       };
       return { proofRun: next, activeSlideIndex: completeIdx };
     }
@@ -185,9 +196,11 @@ export function applyProofRunDispatch(args: {
   }
 }
 
-/** Resolve deck index from phase when hydrating UI. */
-export function proofRunSlideIndexForState(pr: ProofRunRuntimeState, slideCount: number): number {
-  if (slideCount <= 0) return 0;
-  if (pr.phase === "idle") return clampIndex(pr.lastSlideIndex, slideCount);
-  return clampIndex(slideIndexForProofRunPhase(pr.phase, slideCount), slideCount);
+/**
+ * Resolve deck index from persisted phase when hydrating UI (needs concrete slides, not a count).
+ */
+export function proofRunSlideIndexForState(pr: ProofRunRuntimeState, slides: PresentationSlide[]): number {
+  if (slides.length === 0) return 0;
+  if (pr.phase === "idle") return clampIndex(pr.lastSlideIndex, slides.length);
+  return clampIndex(slideIndexForProofRunPhaseInDeck(slides, pr.phase), slides.length);
 }
